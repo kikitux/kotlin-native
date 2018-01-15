@@ -115,12 +115,13 @@ internal object DataFlowIR {
         var numberOfFunctions = 0
     }
 
-    abstract class FunctionSymbol(val numberOfParameters: Int, val name: String?) {
+    abstract class FunctionSymbol(val numberOfParameters: Int, val isGlobalInitializer: Boolean, val name: String?) {
         var escapes: Int? = null
         var pointsTo: IntArray? = null
 
-        class External(val hash: Long, numberOfParameters: Int, escapes: Int?, pointsTo: IntArray?, name: String? = null)
-            : FunctionSymbol(numberOfParameters, name) {
+        class External(val hash: Long, numberOfParameters: Int, isGlobalInitializer: Boolean,
+                       escapes: Int?, pointsTo: IntArray?, name: String? = null)
+            : FunctionSymbol(numberOfParameters, isGlobalInitializer, name) {
 
             init {
                 this.escapes = escapes
@@ -143,11 +144,13 @@ internal object DataFlowIR {
             }
         }
 
-        abstract class Declared(numberOfParameters: Int, val module: Module, val symbolTableIndex: Int, name: String?)
-            : FunctionSymbol(numberOfParameters, name)
+        abstract class Declared(numberOfParameters: Int, val module: Module, val symbolTableIndex: Int,
+                                isGlobalInitializer: Boolean, name: String?)
+            : FunctionSymbol(numberOfParameters, isGlobalInitializer, name)
 
-        class Public(val hash: Long, numberOfParameters: Int, module: Module, symbolTableIndex: Int, name: String? = null)
-            : Declared(numberOfParameters, module, symbolTableIndex, name) {
+        class Public(val hash: Long, numberOfParameters: Int, module: Module, symbolTableIndex: Int,
+                     isGlobalInitializer: Boolean, name: String? = null)
+            : Declared(numberOfParameters, module, symbolTableIndex, isGlobalInitializer, name) {
             override fun equals(other: Any?): Boolean {
                 if (this === other) return true
                 if (other !is Public) return false
@@ -164,8 +167,9 @@ internal object DataFlowIR {
             }
         }
 
-        class Private(val index: Int, numberOfParameters: Int, module: Module, symbolTableIndex: Int, name: String? = null)
-            : Declared(numberOfParameters, module, symbolTableIndex, name) {
+        class Private(val index: Int, numberOfParameters: Int, module: Module, symbolTableIndex: Int,
+                      isGlobalInitializer: Boolean, name: String? = null)
+            : Declared(numberOfParameters, module, symbolTableIndex, isGlobalInitializer, name) {
             override fun equals(other: Any?): Boolean {
                 if (this === other) return true
                 if (other !is Private) return false
@@ -239,7 +243,6 @@ internal object DataFlowIR {
     class FunctionBody(val nodes: List<Node>, val returns: Node.Variable, val throws: Node.Variable)
 
     class Function(val symbol: FunctionSymbol,
-                   val isGlobalInitializer: Boolean,
                    val parameterTypes: Array<Type>,
                    val body: FunctionBody) {
 
@@ -352,6 +355,43 @@ internal object DataFlowIR {
                     result.toString()
                 }
 
+                is Node.ArrayRead -> {
+                    val result = StringBuilder()
+                    result.appendln("        ARRAY READ")
+                    result.append("            ARRAY #${ids[node.array.node]}")
+                    if (node.array.castToType == null)
+                        result.appendln()
+                    else
+                        result.appendln(" CASTED TO ${node.array.castToType}")
+                    result.append("            INDEX #${ids[node.index.node]!!}")
+                    if (node.index.castToType == null)
+                        result.appendln()
+                    else
+                        result.appendln(" CASTED TO ${node.index.castToType}")
+                    result.toString()
+                }
+
+                is Node.ArrayWrite -> {
+                    val result = StringBuilder()
+                    result.appendln("        ARRAY READ")
+                    result.append("            ARRAY #${ids[node.array.node]}")
+                    if (node.array.castToType == null)
+                        result.appendln()
+                    else
+                        result.appendln(" CASTED TO ${node.array.castToType}")
+                    result.append("            INDEX #${ids[node.index.node]!!}")
+                    if (node.index.castToType == null)
+                        result.appendln()
+                    else
+                        result.appendln(" CASTED TO ${node.index.castToType}")
+                    print("            VALUE #${ids[node.value.node]!!}")
+                    if (node.value.castToType == null)
+                        result.appendln()
+                    else
+                        result.appendln(" CASTED TO ${node.value.castToType}")
+                    result.toString()
+                }
+
                 is Node.Variable -> {
                     val result = StringBuilder()
                     result.appendln("        ${if (node.temp) "TEMP VAR" else "VARIABLE"} ")
@@ -364,6 +404,7 @@ internal object DataFlowIR {
                     }
                     result.toString()
                 }
+
 
                 else -> {
                     "        UNKNOWN: ${node::class.java}\n"
@@ -484,7 +525,7 @@ internal object DataFlowIR {
             functionMap.getOrPut(it) {
                 when (it) {
                     is PropertyDescriptor ->
-                        FunctionSymbol.Private(privateFunIndex++, 0, module, -1, takeName { "${it.symbolName}_init" })
+                        FunctionSymbol.Private(privateFunIndex++, 0, module, -1, true, takeName { "${it.symbolName}_init" })
 
                     is FunctionDescriptor -> {
                         val name = if (it.isExported()) it.symbolName else it.internalName
@@ -496,7 +537,7 @@ internal object DataFlowIR {
                             val escapesBitMask = (escapesAnnotation?.allValueArguments?.get(escapesWhoDescriptor.name) as? ConstantValue<Int>)?.value
                             @Suppress("UNCHECKED_CAST")
                             val pointsToBitMask = (pointsToAnnotation?.allValueArguments?.get(pointsToOnWhomDescriptor.name) as? ConstantValue<List<IntValue>>)?.value
-                            FunctionSymbol.External(name.localHash.value, numberOfParameters, escapesBitMask,
+                            FunctionSymbol.External(name.localHash.value, numberOfParameters, false, escapesBitMask,
                                     pointsToBitMask?.let { it.map { it.value }.toIntArray() }, takeName { name })
                         } else {
                             val isAbstract = it.modality == Modality.ABSTRACT
@@ -508,9 +549,9 @@ internal object DataFlowIR {
                                 ++module.numberOfFunctions
                             val symbolTableIndex = if (!placeToFunctionsTable) -1 else couldBeCalledVirtuallyIndex++
                             if (it.isExported())
-                                FunctionSymbol.Public(name.localHash.value, numberOfParameters, module, symbolTableIndex, takeName { name })
+                                FunctionSymbol.Public(name.localHash.value, numberOfParameters, module, symbolTableIndex, false, takeName { name })
                             else
-                                FunctionSymbol.Private(privateFunIndex++, numberOfParameters, module, symbolTableIndex, takeName { name })
+                                FunctionSymbol.Private(privateFunIndex++, numberOfParameters, module, symbolTableIndex, false, takeName { name })
                         }
                     }
 

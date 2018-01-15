@@ -16,6 +16,7 @@
 
 package org.jetbrains.kotlin.backend.konan.optimizations
 
+import org.jetbrains.kotlin.backend.common.ir.ir2stringWhole
 import org.jetbrains.kotlin.backend.konan.DirectedGraphCondensationBuilder
 import org.jetbrains.kotlin.backend.konan.DirectedGraphMultiNode
 import org.jetbrains.kotlin.backend.konan.llvm.Lifetime
@@ -293,6 +294,8 @@ internal object EscapeAnalysis {
                 analyze(callGraph, multiNode)
         }
 
+        var k = 0
+
         private fun analyze(callGraph: CallGraph, multiNode: DirectedGraphMultiNode<DataFlowIR.FunctionSymbol>) {
             DEBUG_OUTPUT(0) {
                 println("Analyzing multiNode:\n    ${multiNode.nodes.joinToString("\n   ") { it.toString() }}")
@@ -356,7 +359,12 @@ internal object EscapeAnalysis {
                         is DataFlowIR.Node.FieldRead -> node.ir
                         else -> null
                     }
-                    ir?.let { lifetimes.put(it, graph.lifetimeOf(node)) }
+                    ir?.let {
+                        ++k
+                        //if (k > 10)
+                            lifetimes.put(it, graph.lifetimeOf(node))
+                        //println("$k: ${ir2stringWhole(it)}")
+                    }
                 }
             }
         }
@@ -369,9 +377,11 @@ internal object EscapeAnalysis {
 
             callGraph.directEdges[function]!!.callSites.forEach {
                 val callee = it.actualCallee
-                val calleeEAResult = if (it.isVirtual) getExternalFunctionEAResult(it)
-                else callGraph.directEdges[callee]?.let { escapeAnalysisResults[it.symbol]!! }
-                        ?: getExternalFunctionEAResult(it)
+                val calleeEAResult = if (it.isVirtual)
+                                         getExternalFunctionEAResult(it)
+                                     else
+                                         callGraph.directEdges[callee]?.let { escapeAnalysisResults[it.symbol]!! }
+                                             ?: getExternalFunctionEAResult(it)
                 pointsToGraph.processCall(it, calleeEAResult)
             }
 

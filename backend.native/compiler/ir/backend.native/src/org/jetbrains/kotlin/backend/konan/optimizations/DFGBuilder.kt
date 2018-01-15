@@ -461,7 +461,6 @@ internal class ModuleDFGBuilder(val context: Context, val irModule: IrModuleFrag
                     .toTypedArray()
             return DataFlowIR.Function(
                     symbol              = symbolTable.mapFunction(descriptor),
-                    isGlobalInitializer = descriptor is PropertyDescriptor,
                     parameterTypes      = parameterTypes,
                     body                = DataFlowIR.FunctionBody(allNodes.distinct().toList(), returnsNode, throwsNode)
             )
