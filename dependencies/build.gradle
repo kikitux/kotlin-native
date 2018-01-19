@@ -23,7 +23,7 @@ import org.jetbrains.kotlin.konan.target.*
 import org.jetbrains.kotlin.konan.util.DependencyProcessor
 import static org.jetbrains.kotlin.konan.target.KonanTarget.*
 import static org.jetbrains.kotlin.konan.util.VisibleNamedKt.*
-import org.jetbrains.kotlin.konan.properties.GeneralProperties
+import org.jetbrains.kotlin.konan.properties.KonanPropertiesLoader
 import org.jetbrains.kotlin.konan.properties.*
 
 buildscript {
@@ -229,7 +229,7 @@ enum DependencyKind {
     private Closure<String> dirGetter           // KonanProperties -> String
     private Closure<String> propertyNameGetter  // KonanTarget -> String
 
-    String getDirectory(GeneralProperties properties) {
+    String getDirectory(KonanPropertiesLoader properties) {
         return dirGetter(properties)
     }
 
@@ -241,7 +241,7 @@ enum DependencyKind {
 }
 
 TargetManager.enabled.each { target ->
-    def konanProperties = new GeneralProperties(target,
+    def konanProperties = new KonanPropertiesLoader(target,
             rootProject.ext.konanProperties,
             rootProject.ext.dependenciesDir.canonicalPath
     )

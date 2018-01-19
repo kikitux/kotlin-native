@@ -31,10 +31,10 @@ typealias ExecutableFile = String
 // Use "clang -v -save-temps" to write linkCommand() method 
 // for another implementation of this class.
 abstract class PlatformFlags(val properties: KonanPropertyValues) 
-    : KonanPropertyValues by properties {
+   /* : KonanPropertyValues by properties */{
 
-    val llvmBin = "$absoluteLlvmHome/bin"
-    val llvmLib = "$absoluteLlvmHome/lib"
+    val llvmBin = "${properties.absoluteLlvmHome}/bin"
+    val llvmLib = "${properties.absoluteLlvmHome}/lib"
     val llvmLto = "$llvmBin/llvm-lto"
 
     private val libLTODir = when (TargetManager.host) {
@@ -45,7 +45,7 @@ abstract class PlatformFlags(val properties: KonanPropertyValues)
 
     val libLTO = "$libLTODir/${System.mapLibraryName("LTO")}"
 
-    val targetLibffi = libffiDir ?.let { listOf("${absoluteLibffiDir}/lib/libffi.a") } ?: emptyList()
+    val targetLibffi = properties.libffiDir ?.let { listOf("${properties.absoluteLibffiDir}/lib/libffi.a") } ?: emptyList()
 
     open val useCompilerDriverAsLinker: Boolean get() = false // TODO: refactor.
 
@@ -63,8 +63,8 @@ abstract class PlatformFlags(val properties: KonanPropertyValues)
     }
 }
 
-open class AndroidPlatform(targetProperties: KonanPropertyValues)
-    : PlatformFlags(targetProperties) {
+open class AndroidPlatform(targetProperties: AndroidPropertyValues)
+    : PlatformFlags(targetProperties), AndroidPropertyValues by targetProperties  {
 
     private val prefix = "$absoluteTargetToolchain/bin/"
     private val clang = "$prefix/clang"
@@ -292,7 +292,7 @@ open class WasmPlatform(targetProperties: WasmPropertyValues)
     }
 }
 
-fun platform(target: KonanTarget, properties: KonanPropertyValues) =
+fun platform(target: KonanTarget, properties: KonanPropertyValues): PlatformFlags  =
     when (target) {
         KonanTarget.LINUX, KonanTarget.RASPBERRYPI ->
             LinuxBasedPlatform(properties as LinuxPropertyValues)
@@ -301,7 +301,7 @@ fun platform(target: KonanTarget, properties: KonanPropertyValues) =
         KonanTarget.MACBOOK, KonanTarget.IPHONE, KonanTarget.IPHONE_SIM ->
             MacOSBasedPlatform(properties as ApplePropertyValues)
         KonanTarget.ANDROID_ARM32, KonanTarget.ANDROID_ARM64 ->
-            AndroidPlatform(properties)
+            AndroidPlatform(properties as AndroidPropertyValues)
         KonanTarget.MINGW ->
             MingwPlatform(properties as MingwPropertyValues)
         KonanTarget.WASM32 ->

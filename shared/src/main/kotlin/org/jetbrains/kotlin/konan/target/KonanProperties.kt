@@ -89,6 +89,7 @@ interface LinuxPropertyValues: NonApplePropertyValues {
 
 interface LinuxMIPSPropertyValues: LinuxPropertyValues
 interface RaspberryPiPropertyValues: LinuxPropertyValues
+interface AndroidPropertyValues: LinuxPropertyValues
 
 interface WasmPropertyValues: NonApplePropertyValues {
     val s2wasmFlags get() = targetList("s2wasmFlags")
@@ -127,7 +128,7 @@ class LinuxMIPSProperties(target: KonanTarget, properties: Properties, baseDir: 
     : LinuxPropertyValues , KonanPropertiesLoader(target, properties, baseDir)
 
 class AndroidProperties(target: KonanTarget, properties: Properties, baseDir: String?)
-    : LinuxPropertyValues , KonanPropertiesLoader(target, properties, baseDir)
+    : AndroidPropertyValues , KonanPropertiesLoader(target, properties, baseDir)
 
 class AppleProperties(target: KonanTarget, properties: Properties, baseDir: String?)
     : ApplePropertyValues,  KonanPropertiesLoader(target, properties, baseDir)
@@ -158,7 +159,7 @@ fun konanProperties(target: KonanTarget, properties: Properties, baseDir: String
 
 class KonanTargetManager(val properties: Properties, val baseDir: String? = null) {
     private val enabledTargets = TargetManager.enabled
-    private val konanProperties = enabledTargets.map {
+    val konanProperties = enabledTargets.map {
         it to konanProperties(it, properties, baseDir)
     }.toMap()
 }

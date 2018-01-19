@@ -33,7 +33,7 @@ class ToolConfig(userProvidedTargetName: String?, userProvidedKonanProperties: S
 
     private val dependencies = DependencyProcessor.defaultDependenciesRoot
 
-    private val targetProperties = KonanProperties(target, properties, dependencies.path)
+    private val targetProperties = konanProperties(target, properties, dependencies.path)
 
     val substitutions = mapOf<String, String> (
         "target" to target.detailedName,

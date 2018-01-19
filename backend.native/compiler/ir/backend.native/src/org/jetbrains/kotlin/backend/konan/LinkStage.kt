@@ -55,13 +55,13 @@ internal class LinkStage(val context: Context) {
 
         val tool = platform.llvmLto
         val command = mutableListOf(tool, "-o", combined)
-        command.addNonEmpty(platform.llvmLtoFlags)
+        command.addNonEmpty(platform.properties.llvmLtoFlags)
         when {
-            optimize -> command.addNonEmpty(platform.llvmLtoOptFlags)
-            debug    -> command.addNonEmpty(platform.llvmDebugOptFlags)
-            else     -> command.addNonEmpty(platform.llvmLtoNooptFlags)
+            optimize -> command.addNonEmpty(platform.properties.llvmLtoOptFlags)
+            debug    -> command.addNonEmpty(platform.properties.llvmDebugOptFlags)
+            else     -> command.addNonEmpty(platform.properties.llvmLtoNooptFlags)
         }
-        command.addNonEmpty(platform.llvmLtoDynamicFlags)
+        command.addNonEmpty(platform.properties.llvmLtoDynamicFlags)
         command.addNonEmpty(files)
         runTool(command)
 
@@ -75,7 +75,7 @@ internal class LinkStage(val context: Context) {
     }
 
     private fun targetTool(tool: String, vararg arg: String) {
-        val absoluteToolName = "${platform.absoluteTargetToolchain}/bin/$tool"
+        val absoluteToolName = "${platform.properties.absoluteTargetToolchain}/bin/$tool"
         runTool(absoluteToolName, *arg)
     }
 
@@ -128,7 +128,7 @@ internal class LinkStage(val context: Context) {
     // So we stick to "-alias _main _konan_main" on Mac.
     // And just do the same on Linux.
     private val entryPointSelector: List<String>
-        get() = if (nomain || dynamic) emptyList() else platform.entrySelector
+        get() = if (nomain || dynamic) emptyList() else platform.properties.entrySelector
 
     private fun link(objectFiles: List<ObjectFile>, includedBinaries: List<String>, libraryProvidedLinkerFlags: List<String>): ExecutableFile? {
         val frameworkLinkerArgs: List<String>

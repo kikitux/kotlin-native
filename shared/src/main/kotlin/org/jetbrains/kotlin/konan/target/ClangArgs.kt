@@ -16,13 +16,15 @@
 
 package org.jetbrains.kotlin.konan.target
 
-import org.jetbrains.kotlin.konan.properties.KonanProperties
+import org.jetbrains.kotlin.konan.properties.*
 import org.jetbrains.kotlin.konan.file.File
 
 class ClangTargetArgs(val target: KonanTarget, konanProperties: KonanPropertyValues) {
 
     val sysRoot = konanProperties.absoluteTargetSysRoot
-    val targetArg = konanProperties.targetArg
+    val targetArg = if (konanProperties is LinuxPropertyValues) 
+        konanProperties.targetArg 
+        else null
 
     val specificClangArgs: List<String> get() {
         val result = when (target) {
@@ -121,7 +123,7 @@ class ClangTargetArgs(val target: KonanTarget, konanProperties: KonanPropertyVal
     }
 }
 
-class ClangHostArgs(val hostProperties: KonanProperties) {
+class ClangHostArgs(val hostProperties: KonanPropertyValues) {
 
     val targetToolchain get() = hostProperties.absoluteTargetToolchain
     val gccToolchain get() = hostProperties.absoluteGccToolchain
