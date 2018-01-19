@@ -139,8 +139,6 @@ class MingwProperties(target: KonanTarget, properties: Properties, baseDir: Stri
 class WasmProperties(target: KonanTarget, properties: Properties, baseDir: String?)
     : WasmPropertyValues, KonanPropertiesLoader(target, properties, baseDir)
 
-//class KonanProperties(val target: KonanTarget, val properties: Properties, val baseDir: String? = null)
-//    : KonanPropertyValues, KonanPropertiesLoader(target, properties, baseDir)
 
 fun konanProperties(target: KonanTarget, properties: Properties, baseDir: String?) = when (target)  {
         KonanTarget.LINUX, KonanTarget.RASPBERRYPI ->

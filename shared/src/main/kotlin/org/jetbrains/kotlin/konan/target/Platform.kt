@@ -178,10 +178,7 @@ open class LinuxBasedPlatform(targetProperties: LinuxPropertyValues)
         = binaries.filter { it.isUnixStaticLib }
 
     override fun linkCommand(objectFiles: List<ObjectFile>, executable: ExecutableFile, optimize: Boolean, debug: Boolean, dynamic: Boolean): Command {
-        //val isMips = (properties.target == KonanTarget.LINUX_MIPS32 ||
-         //       properties.target == KonanTarget.LINUX_MIPSEL32)
         val isMips = (properties is LinuxMIPSPropertyValues)
-
 
         // TODO: Can we extract more to the konan.properties?
         return Command(linker).apply {
@@ -307,12 +304,4 @@ fun platform(target: KonanTarget, properties: KonanPropertyValues): PlatformFlag
         KonanTarget.WASM32 ->
             WasmPlatform(properties as WasmPropertyValues)
     }
-/*
-class PlatformManager(val loader: KonanPropertesLoader) {
-    private val enabledTargets = TargetManager.enabled
-    private val konanProperties = enabledTargets.map {
-        it to konanProperties(loader)
-    }.toMap()
 
-}
-*/
