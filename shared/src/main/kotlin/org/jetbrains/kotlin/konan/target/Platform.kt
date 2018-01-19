@@ -122,10 +122,11 @@ open class MacOSBasedPlatform(targetProperties: KonanProperties)
         }
     }
 
-    fun dsymUtilCommand(executable: ExecutableFile) = object : Command(dsymutilCommand(executable)) {
-        override fun runProcess(): Int = 
-            executeCommandWithFilter(command)
-    }
+    fun dsymUtilCommand(executable: ExecutableFile, outputDsymBundle: String) = 
+        object : Command(dsymutilCommand(executable, outputDsymBundle)) {
+            override fun runProcess(): Int = 
+                executeCommandWithFilter(command)
+        }
 
     // TODO: consider introducing a better filtering directly in Command.
     private fun executeCommandWithFilter(command: List<String>): Int {
@@ -158,7 +159,8 @@ open class MacOSBasedPlatform(targetProperties: KonanProperties)
         return exitCode
     }
 
-    open fun dsymutilCommand(executable: ExecutableFile): List<String> = listOf(dsymutil, executable)
+    open fun dsymutilCommand(executable: ExecutableFile, outputDsymBundle: String): List<String> = 
+        listOf(dsymutil, executable, "-o", outputDsymBundle)
 
     open fun dsymutilDryRunVerboseCommand(executable: ExecutableFile): List<String> =
             listOf(dsymutil, "-dump-debug-map" ,executable)
