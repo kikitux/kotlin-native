@@ -20,24 +20,17 @@ import org.jetbrains.kotlin.konan.file.*
 import org.jetbrains.kotlin.konan.target.*
 import org.jetbrains.kotlin.konan.util.DependencyProcessor
 
-class KonanProperties(val target: KonanTarget, val properties: Properties, val baseDir: String? = null) {
-
-    fun downloadDependencies() {
-        dependencyProcessor!!.run()
-    }
-
+interface TargetableExternalStorage {
     fun targetString(key: String): String? 
-        = properties.targetString(key, target)
     fun targetList(key: String): List<String> 
-        = properties.targetList(key, target)
     fun hostString(key: String): String? 
-        = properties.hostString(key)
     fun hostList(key: String): List<String> 
-        = properties.hostList(key)
     fun hostTargetString(key: String): String? 
-        = properties.hostTargetString(key, target)
     fun hostTargetList(key: String): List<String> 
-        = properties.hostTargetList(key, target)
+    fun absolute(value: String?): String
+}
+
+interface KonanPropertyValues: TargetableExternalStorage {
 
     val llvmHome get() = hostString("llvmHome")
 
@@ -61,9 +54,7 @@ class KonanProperties(val target: KonanTarget, val properties: Properties, val b
     // Notice: these ones are host-target.
     val targetToolchain get() = hostTargetString("targetToolchain")
     val dependencies get() = hostTargetList("dependencies")
-
-    private fun absolute(value: String?): String =
-            dependencyProcessor!!.resolveRelative(value!!).absolutePath
+    val osVersionMin: String? get() = targetString("osVersionMin")
 
     val absoluteTargetSysRoot get() = absolute(targetSysRoot)
     val absoluteTargetToolchain get() = absolute(targetToolchain)
@@ -72,6 +63,29 @@ class KonanProperties(val target: KonanTarget, val properties: Properties, val b
     val absoluteLibffiDir get() = absolute(libffiDir)
 
     val mingwWithLlvm: String?
+}
+
+class KonanProperties(val target: KonanTarget, val properties: Properties, val baseDir: String? = null): KonanPropertyValues {
+
+    fun downloadDependencies() {
+        dependencyProcessor!!.run()
+    }
+
+    override fun targetString(key: String): String? 
+        = properties.targetString(key, target)
+    override fun targetList(key: String): List<String> 
+        = properties.targetList(key, target)
+    override fun hostString(key: String): String? 
+        = properties.hostString(key)
+    override fun hostList(key: String): List<String> 
+        = properties.hostList(key)
+    override fun hostTargetString(key: String): String? 
+        = properties.hostTargetString(key, target)
+    override fun hostTargetList(key: String): List<String> 
+        = properties.hostTargetList(key, target)
+    override fun absolute(value: String?): String =
+            dependencyProcessor!!.resolveRelative(value!!).absolutePath
+    override val mingwWithLlvm: String?
         get() { 
             if (target != KonanTarget.MINGW) {
                 error("Only mingw target can have '.mingwWithLlvm' property")
@@ -80,8 +94,6 @@ class KonanProperties(val target: KonanTarget, val properties: Properties, val b
             // Use (equal) llvmHome fow now.
             return targetString("llvmHome")
         }
-
-    val osVersionMin: String? get() = targetString("osVersionMin")
 
     private val dependencyProcessor = baseDir?.let { DependencyProcessor(java.io.File(it), this) }
 

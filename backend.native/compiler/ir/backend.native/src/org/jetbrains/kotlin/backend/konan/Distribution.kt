@@ -52,16 +52,4 @@ class Distribution(val targetManager: TargetManager,
     val dependenciesDir = DependencyProcessor.defaultDependenciesRoot.absolutePath
 
     val targetProperties = KonanProperties(target, properties, dependenciesDir)
-
-    val llvmHome = targetProperties.absoluteLlvmHome
-    val llvmBin = "$llvmHome/bin"
-    val llvmLib = "$llvmHome/lib"
-    val llvmLto = "$llvmBin/llvm-lto"
-
-    private val libLTODir = when (TargetManager.host) {
-        KonanTarget.MACBOOK, KonanTarget.LINUX -> llvmLib
-        KonanTarget.MINGW -> llvmBin
-        else -> error("Don't know libLTO location for this platform.")
-    }
-    val libLTO = "$libLTODir/${System.mapLibraryName("LTO")}"
 }
