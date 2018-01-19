@@ -30,7 +30,7 @@ typealias ExecutableFile = String
 
 // Use "clang -v -save-temps" to write linkCommand() method 
 // for another implementation of this class.
-abstract class PlatformFlags(val properties: KonanProperties) 
+abstract class PlatformFlags(val properties: KonanPropertyValues) 
     : KonanPropertyValues by properties {
 
     val llvmBin = "$absoluteLlvmHome/bin"
@@ -63,7 +63,7 @@ abstract class PlatformFlags(val properties: KonanProperties)
     }
 }
 
-open class AndroidPlatform(targetProperties: KonanProperties)
+open class AndroidPlatform(targetProperties: KonanPropertyValues)
     : PlatformFlags(targetProperties) {
 
     private val prefix = "$absoluteTargetToolchain/bin/"
@@ -91,16 +91,16 @@ open class AndroidPlatform(targetProperties: KonanProperties)
     }
 }
 
-open class MacOSBasedPlatform(targetProperties: KonanProperties)
-    : PlatformFlags(targetProperties) {
+open class MacOSBasedPlatform(targetProperties: ApplePropertyValues)
+    : PlatformFlags(targetProperties), ApplePropertyValues by targetProperties {
 
     private val linker = "$absoluteTargetToolchain/usr/bin/ld"
     internal val dsymutil = "$llvmBin/llvm-dsymutil"
 
     open val osVersionMinFlags: List<String> by lazy {
         listOf(
-                targetString("osVersionMinFlagLd")!!,
-                osVersionMin!! + ".0")
+                osVersionMinFlagLd,
+                osVersionMin + ".0")
     }
 
     override fun filterStaticLibraries(binaries: List<String>) 
@@ -110,7 +110,7 @@ open class MacOSBasedPlatform(targetProperties: KonanProperties)
         return object : Command(linker) {} .apply {
             + "-demangle"
             + listOf("-object_path_lto", "temporary.o", "-lto_library", libLTO)
-            + listOf("-dynamic", "-arch", targetString("arch")!!)
+            + listOf("-dynamic", "-arch", arch)
             + osVersionMinFlags
             + listOf("-syslibroot", absoluteTargetSysRoot, "-o", executable)
             + objectFiles
@@ -166,21 +166,23 @@ open class MacOSBasedPlatform(targetProperties: KonanProperties)
             listOf(dsymutil, "-dump-debug-map" ,executable)
 }
 
-open class LinuxBasedPlatform(targetProperties: KonanProperties)
-    : PlatformFlags(targetProperties) {
+open class LinuxBasedPlatform(targetProperties: LinuxPropertyValues)
+    : PlatformFlags(targetProperties), LinuxPropertyValues by targetProperties {
 
-    private val libGcc = "$absoluteTargetSysRoot/${targetString("libGcc")}"
+    override val libGcc: String = "$absoluteTargetSysRoot/${super.libGcc}"
     private val linker = "$absoluteTargetToolchain/bin/ld.gold"
-    private val pluginOptimizationFlags = targetList("pluginOptimizationFlags")
     private val specificLibs
-        = targetList("abiSpecificLibraries").map { "-L${absoluteTargetSysRoot}/$it" }
+        = abiSpecificLibraries.map { "-L${absoluteTargetSysRoot}/$it" }
 
     override fun filterStaticLibraries(binaries: List<String>) 
         = binaries.filter { it.isUnixStaticLib }
 
     override fun linkCommand(objectFiles: List<ObjectFile>, executable: ExecutableFile, optimize: Boolean, debug: Boolean, dynamic: Boolean): Command {
-        val isMips = (properties.target == KonanTarget.LINUX_MIPS32 ||
-                properties.target == KonanTarget.LINUX_MIPSEL32)
+        //val isMips = (properties.target == KonanTarget.LINUX_MIPS32 ||
+         //       properties.target == KonanTarget.LINUX_MIPSEL32)
+        val isMips = (properties is LinuxMIPSPropertyValues)
+
+
         // TODO: Can we extract more to the konan.properties?
         return Command(linker).apply {
             + "--sysroot=${absoluteTargetSysRoot}"
@@ -190,7 +192,7 @@ open class LinuxBasedPlatform(targetProperties: KonanProperties)
             + "--build-id"
             + "--eh-frame-hdr"
             + "-dynamic-linker"
-            + targetString("dynamicLinker")!!
+            + dynamicLinker
             + "-o"
             + executable
             if (!dynamic) + "$absoluteTargetSysRoot/usr/lib64/crt1.o"
@@ -225,8 +227,8 @@ open class LinuxBasedPlatform(targetProperties: KonanProperties)
     }
 }
 
-open class MingwPlatform(targetProperties: KonanProperties)
-    : PlatformFlags(targetProperties) {
+open class MingwPlatform(targetProperties: MingwPropertyValues)
+    : PlatformFlags(targetProperties), MingwPropertyValues by targetProperties {
 
     private val linker = "$absoluteTargetToolchain/bin/clang++"
 
@@ -248,8 +250,8 @@ open class MingwPlatform(targetProperties: KonanProperties)
     override fun linkCommandSuffix() = linkerKonanFlags
 }
 
-open class WasmPlatform(targetProperties: KonanProperties)
-    : PlatformFlags(targetProperties) {
+open class WasmPlatform(targetProperties: WasmPropertyValues)
+    : PlatformFlags(targetProperties), WasmPropertyValues by targetProperties {
 
     private val clang = "clang"
 
@@ -290,18 +292,27 @@ open class WasmPlatform(targetProperties: KonanProperties)
     }
 }
 
-fun platform(target: KonanTarget, properties: KonanProperties) =
+fun platform(target: KonanTarget, properties: KonanPropertyValues) =
     when (target) {
-        KonanTarget.LINUX, KonanTarget.RASPBERRYPI,
+        KonanTarget.LINUX, KonanTarget.RASPBERRYPI ->
+            LinuxBasedPlatform(properties as LinuxPropertyValues)
         KonanTarget.LINUX_MIPS32, KonanTarget.LINUX_MIPSEL32 ->
-            LinuxBasedPlatform(properties)
+            LinuxBasedPlatform(properties as LinuxMIPSPropertyValues)
         KonanTarget.MACBOOK, KonanTarget.IPHONE, KonanTarget.IPHONE_SIM ->
-            MacOSBasedPlatform(properties)
+            MacOSBasedPlatform(properties as ApplePropertyValues)
         KonanTarget.ANDROID_ARM32, KonanTarget.ANDROID_ARM64 ->
             AndroidPlatform(properties)
         KonanTarget.MINGW ->
-            MingwPlatform(properties)
+            MingwPlatform(properties as MingwPropertyValues)
         KonanTarget.WASM32 ->
-            WasmPlatform(properties)
+            WasmPlatform(properties as WasmPropertyValues)
     }
+/*
+class PlatformManager(val loader: KonanPropertesLoader) {
+    private val enabledTargets = TargetManager.enabled
+    private val konanProperties = enabledTargets.map {
+        it to konanProperties(loader)
+    }.toMap()
 
+}
+*/

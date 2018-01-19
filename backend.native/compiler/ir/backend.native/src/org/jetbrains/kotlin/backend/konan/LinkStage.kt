@@ -28,9 +28,8 @@ typealias ExecutableFile = String
 
 internal class LinkStage(val context: Context) {
 
-    val config = context.config.configuration
-    val target = context.config.targetManager.target
-
+    private val config = context.config.configuration
+    private val target = context.config.targetManager.target
     private val properties = context.config.distribution.targetProperties
     private val platform = platform(target, properties)
 
@@ -93,7 +92,7 @@ internal class LinkStage(val context: Context) {
         val combinedS = temporary("combined", ".s")
         targetTool("llc", combinedBc, "-o", combinedS)
 
-        val s2wasmFlags = platform.s2wasmFlags.toTypedArray()
+        val s2wasmFlags = (platform as WasmPropertyValues).s2wasmFlags.toTypedArray()
         val combinedWast = temporary( "combined", ".wast")
         targetTool("s2wasm", combinedS, "-o", combinedWast, *s2wasmFlags)
 

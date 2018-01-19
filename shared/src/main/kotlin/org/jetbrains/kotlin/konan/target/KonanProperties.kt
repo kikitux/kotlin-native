@@ -28,6 +28,7 @@ interface TargetableExternalStorage {
     fun hostTargetString(key: String): String? 
     fun hostTargetList(key: String): List<String> 
     fun absolute(value: String?): String
+    fun downloadDependencies()
 }
 
 interface KonanPropertyValues: TargetableExternalStorage {
@@ -40,21 +41,18 @@ interface KonanPropertyValues: TargetableExternalStorage {
     val llvmLtoFlags get() = targetList("llvmLtoFlags")
     val llvmLtoDynamicFlags get() = targetList("llvmLtoDynamicFlags")
     val entrySelector get() = targetList("entrySelector")
+    val targetArg get() = targetString("quadruple")
     val linkerOptimizationFlags get() = targetList("linkerOptimizationFlags")
     val linkerKonanFlags get() = targetList("linkerKonanFlags")
     val linkerNoDebugFlags get() = targetList("linkerNoDebugFlags")
     val linkerDynamicFlags get() = targetList("linkerDynamicFlags")
     val llvmDebugOptFlags get() = targetList("llvmDebugOptFlags")
-    val s2wasmFlags get() = targetList("s2wasmFlags")
-
     val targetSysRoot get() = targetString("targetSysRoot")
     val libffiDir get() = targetString("libffiDir")
     val gccToolchain get() = targetString("gccToolchain")
-    val targetArg get() = targetString("quadruple")
+
     // Notice: these ones are host-target.
     val targetToolchain get() = hostTargetString("targetToolchain")
-    val dependencies get() = hostTargetList("dependencies")
-    val osVersionMin: String? get() = targetString("osVersionMin")
 
     val absoluteTargetSysRoot get() = absolute(targetSysRoot)
     val absoluteTargetToolchain get() = absolute(targetToolchain)
@@ -62,12 +60,44 @@ interface KonanPropertyValues: TargetableExternalStorage {
     val absoluteLlvmHome get() = absolute(llvmHome)
     val absoluteLibffiDir get() = absolute(libffiDir)
 
-    val mingwWithLlvm: String?
 }
 
-class KonanProperties(val target: KonanTarget, val properties: Properties, val baseDir: String? = null): KonanPropertyValues {
+interface NonApplePropertyValues: KonanPropertyValues {
+}
 
-    fun downloadDependencies() {
+interface ApplePropertyValues: KonanPropertyValues {
+    val arch get() = targetString("arch")!!
+    val osVersionMin get() = targetString("osVersionMin")!!
+    val osVersionMinFlagLd get() = targetString("osVersionMinFlagLd")!!
+}
+
+interface MingwPropertyValues: NonApplePropertyValues {
+    val mingwWithLlvm: String?
+        get() { 
+            // TODO: make it a property in the konan.properties.
+            // Use (equal) llvmHome fow now.
+            return targetString("llvmHome")
+        }
+}
+
+interface LinuxPropertyValues: NonApplePropertyValues {
+    val dynamicLinker get() = targetString("dynamicLinker")!!
+    val libGcc get() = targetString("libGcc")!!
+    val pluginOptimizationFlags get() = targetList("pluginOptimizationFlags")
+    val abiSpecificLibraries get() = targetList("abiSpecificLibraries")
+}
+
+interface LinuxMIPSPropertyValues: LinuxPropertyValues
+interface RaspberryPiPropertyValues: LinuxPropertyValues
+
+interface WasmPropertyValues: NonApplePropertyValues {
+    val s2wasmFlags get() = targetList("s2wasmFlags")
+}
+
+open class KonanPropertiesLoader(val target: KonanTarget, val properties: Properties, val baseDir: String? = null) : KonanPropertyValues {
+    val dependencies get() = hostTargetList("dependencies")
+
+    override fun downloadDependencies() {
         dependencyProcessor!!.run()
     }
 
@@ -85,16 +115,50 @@ class KonanProperties(val target: KonanTarget, val properties: Properties, val b
         = properties.hostTargetList(key, target)
     override fun absolute(value: String?): String =
             dependencyProcessor!!.resolveRelative(value!!).absolutePath
-    override val mingwWithLlvm: String?
-        get() { 
-            if (target != KonanTarget.MINGW) {
-                error("Only mingw target can have '.mingwWithLlvm' property")
-            }
-            // TODO: make it a property in the konan.properties.
-            // Use (equal) llvmHome fow now.
-            return targetString("llvmHome")
-        }
+    private val dependencyProcessor  by lazy {
+        baseDir?.let { DependencyProcessor(java.io.File(it), this) }
+    }
+}
 
-    private val dependencyProcessor = baseDir?.let { DependencyProcessor(java.io.File(it), this) }
+class LinuxProperties(target: KonanTarget, properties: Properties, baseDir: String?)
+    : LinuxPropertyValues, KonanPropertiesLoader(target, properties, baseDir)
 
+class LinuxMIPSProperties(target: KonanTarget, properties: Properties, baseDir: String?)
+    : LinuxPropertyValues , KonanPropertiesLoader(target, properties, baseDir)
+
+class AndroidProperties(target: KonanTarget, properties: Properties, baseDir: String?)
+    : LinuxPropertyValues , KonanPropertiesLoader(target, properties, baseDir)
+
+class AppleProperties(target: KonanTarget, properties: Properties, baseDir: String?)
+    : ApplePropertyValues,  KonanPropertiesLoader(target, properties, baseDir)
+
+class MingwProperties(target: KonanTarget, properties: Properties, baseDir: String?)
+    : MingwPropertyValues, KonanPropertiesLoader(target, properties, baseDir)
+
+class WasmProperties(target: KonanTarget, properties: Properties, baseDir: String?)
+    : WasmPropertyValues, KonanPropertiesLoader(target, properties, baseDir)
+
+//class KonanProperties(val target: KonanTarget, val properties: Properties, val baseDir: String? = null)
+//    : KonanPropertyValues, KonanPropertiesLoader(target, properties, baseDir)
+
+fun konanProperties(target: KonanTarget, properties: Properties, baseDir: String?) = when (target)  {
+        KonanTarget.LINUX, KonanTarget.RASPBERRYPI ->
+            LinuxProperties(target, properties, baseDir)
+        KonanTarget.LINUX_MIPS32, KonanTarget.LINUX_MIPSEL32 ->
+            LinuxMIPSProperties(target, properties, baseDir)
+        KonanTarget.MACBOOK, KonanTarget.IPHONE, KonanTarget.IPHONE_SIM ->
+            AppleProperties(target, properties, baseDir)
+        KonanTarget.ANDROID_ARM32, KonanTarget.ANDROID_ARM64 ->
+            AndroidProperties(target, properties, baseDir)
+        KonanTarget.MINGW ->
+            MingwProperties(target, properties, baseDir)
+        KonanTarget.WASM32 ->
+            WasmProperties(target, properties, baseDir)
+    }
+
+class KonanTargetManager(val properties: Properties, val baseDir: String? = null) {
+    private val enabledTargets = TargetManager.enabled
+    private val konanProperties = enabledTargets.map {
+        it to konanProperties(it, properties, baseDir)
+    }.toMap()
 }

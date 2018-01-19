@@ -51,5 +51,5 @@ class Distribution(val targetManager: TargetManager,
 
     val dependenciesDir = DependencyProcessor.defaultDependenciesRoot.absolutePath
 
-    val targetProperties = KonanProperties(target, properties, dependenciesDir)
+    val targetProperties: KonanPropertyValues = konanProperties(target, properties, dependenciesDir)
 }
