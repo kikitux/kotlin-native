@@ -34,6 +34,8 @@ internal class CodeGenerator(override val context: Context) : ContextUtils {
     fun llvmFunction(function: FunctionDescriptor): LLVMValueRef = function.llvmFunction
     val intPtrType = LLVMIntPtrType(llvmTargetData)!!
     internal val immOneIntPtrType = LLVMConstInt(intPtrType, 1, 1)!!
+    internal val immZeroIntPtrType = LLVMConstInt(intPtrType, 0, 1)!!
+    internal val immMOneIntPtrType = LLVMConstInt(intPtrType, -1L, 1)!!
 
     //-------------------------------------------------------------------------//
 
@@ -318,28 +320,36 @@ internal class FunctionGenerationContext(val function: LLVMValueRef,
                 localAllocs++
                 return arenaSlot!!
             }
-            var resultFrame = ptrToInt(
+            val localSlot = ptrToInt(vars.createAnonymousSlot(), codegen.intPtrType)
+            var resultFrame =
                     if (returnSlot == null) {
-                        vars.createAnonymousSlot()
+                        codegen.immZeroIntPtrType
                     } else {
-                        call(context.llvm.getReturnSlotIfArenaFunction, listOf(returnSlot, vars.createAnonymousSlot()))
-                    },
-                    codegen.intPtrType)
+                        ptrToInt(call(context.llvm.getReturnSlotIfArenaFunction, listOf(returnSlot, intToPtr(codegen.immMOneIntPtrType, codegen.kObjHeaderPtrPtr))), codegen.intPtrType)
+                    }
             objectParameters.forEach {
                 val paramFrame = call(context.llvm.getParamFrame, listOf(param(it)))
                 val bbTakeParam = basicBlock("takeParam", null)
                 val bbDoNotTakeParam = basicBlock("doNotTakeParam", null)
                 val bbNextParam = basicBlock("nextParam", null)
-                condBr(icmpGt(paramFrame, resultFrame), bbTakeParam, bbDoNotTakeParam)
-                appendingTo(bbTakeParam) {
-                    br(bbNextParam)
-                }
-                appendingTo(bbDoNotTakeParam) {
-                    br(bbNextParam)
-                }
+                condBr(icmpUGt(paramFrame, resultFrame), bbTakeParam, bbDoNotTakeParam)
+                appendingTo(bbTakeParam) { br(bbNextParam) }
+                appendingTo(bbDoNotTakeParam) { br(bbNextParam) }
                 positionAtEnd(bbNextParam)
                 val currentFrame = phi(codegen.intPtrType)
                 addPhiIncoming(currentFrame, bbTakeParam to paramFrame, bbDoNotTakeParam to resultFrame)
+                resultFrame = currentFrame
+            }
+            if (true) {
+                val bbTakeCurrentFrame = basicBlock("takeCurFrame", null)
+                val bbTakeLocalSlot = basicBlock("takeLocalSlot", null)
+                val bbDone = basicBlock("done", null)
+                condBr(icmpNe(resultFrame, codegen.immMOneIntPtrType), bbTakeCurrentFrame, bbTakeLocalSlot)
+                appendingTo(bbTakeCurrentFrame) { br(bbDone) }
+                appendingTo(bbTakeLocalSlot) { br(bbDone) }
+                positionAtEnd(bbDone)
+                val currentFrame = phi(codegen.intPtrType)
+                addPhiIncoming(currentFrame, bbTakeCurrentFrame to resultFrame, bbTakeLocalSlot to localSlot)
                 resultFrame = currentFrame
             }
             return intToPtr(resultFrame, codegen.kObjHeaderPtrPtr)
@@ -509,6 +519,7 @@ internal class FunctionGenerationContext(val function: LLVMValueRef,
     fun icmpLt(arg0: LLVMValueRef, arg1: LLVMValueRef, name: String = ""): LLVMValueRef = LLVMBuildICmp(builder, LLVMIntPredicate.LLVMIntSLT, arg0, arg1, name)!!
     fun icmpLe(arg0: LLVMValueRef, arg1: LLVMValueRef, name: String = ""): LLVMValueRef = LLVMBuildICmp(builder, LLVMIntPredicate.LLVMIntSLE, arg0, arg1, name)!!
     fun icmpNe(arg0: LLVMValueRef, arg1: LLVMValueRef, name: String = ""): LLVMValueRef = LLVMBuildICmp(builder, LLVMIntPredicate.LLVMIntNE, arg0, arg1, name)!!
+    fun icmpUGt(arg0: LLVMValueRef, arg1: LLVMValueRef, name: String = ""): LLVMValueRef = LLVMBuildICmp(builder, LLVMIntPredicate.LLVMIntUGT, arg0, arg1, name)!!
 
     /* floating-point comparisons */
     fun fcmpEq(arg0: LLVMValueRef, arg1: LLVMValueRef, name: String = ""): LLVMValueRef = LLVMBuildFCmp(builder, LLVMRealPredicate.LLVMRealOEQ, arg0, arg1, name)!!

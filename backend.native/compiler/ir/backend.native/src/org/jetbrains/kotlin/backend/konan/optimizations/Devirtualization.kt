@@ -465,11 +465,10 @@ internal object Devirtualization {
             val typeHierarchy = TypeHierarchy(symbolTable.classMap.values.filterIsInstance<DataFlowIR.Type.Declared>() +
                                               externalModulesDFG.allTypes)
             val instantiatingClasses = InstantiationsSearcher(moduleDFG, externalModulesDFG, typeHierarchy).search()
-            val rootSet = computeRootSet(context, moduleDFG, externalModulesDFG)//getRootSet(irModule)
+            val rootSet = computeRootSet(context, moduleDFG, externalModulesDFG)
 
             val nodesMap = mutableMapOf<DataFlowIR.Node, ConstraintGraph.Node>()
             val variables = mutableMapOf<DataFlowIR.Node.Variable, ConstraintGraph.Node>()
-            // TODO: hokum.
             rootSet.filterNot { it is DataFlowIR.FunctionSymbol.Declared && it.isGlobalInitializer }
                     .forEach { buildFunctionConstraintGraph(it, nodesMap, variables, instantiatingClasses)!! }
             functions.values
@@ -573,27 +572,14 @@ internal object Devirtualization {
                             println("BUGBUGBUG: $virtualCall")
                         }
                         assert (nodesMap[virtualCall] != null, { "Node for virtual call $virtualCall has not been built" })
-                        //val callSite = it.callSite ?: return@forEach
                         val receiver = constraintGraph.virtualCallSiteReceivers[virtualCall]
                         if (receiver == null) {
                             result.put(virtualCall, DevirtualizedCallSite(emptyList()) to virtualCall.callee)
                             return@forEach
                         }
-//                        if (receiver.first.id == 63700) {
-//                            println("QXX")
-//                            receiver.first.types.forEach { println(it) }
-//                            println()
-//                        }
-
-                        if (//receiver == null// || receiver.first.types.isEmpty()
-                                /*|| */receiver.first.types.any { it == ConstraintGraph.Type.Virtual }) {
+                        if (receiver.first.types.any { it == ConstraintGraph.Type.Virtual }) {
                             if (DEBUG > 0) {
                                 println("Unable to devirtualize callsite ${virtualCall.callSite?.let { ir2stringWhole(it) } ?: virtualCall.toString() }")
-                                //if (receiver == null)
-                                  //  println("    receiver = null")
-                                //else if (receiver.first.types.isEmpty())
-                                  //  println("    no single possible receiver type")
-                                //else
                                 println("    receiver is Virtual")
                             }
                             return@forEach
@@ -615,13 +601,6 @@ internal object Devirtualization {
                             if (callee is DataFlowIR.FunctionSymbol.Declared && callee.symbolTableIndex < 0)
                                 error("Function ${devirtualizedCallee.receiverType}.$callee cannot be called virtually," +
                                         " but actually is at call site: ${virtualCall.callSite?.let { ir2stringWhole(it) } ?: virtualCall.toString() }")
-//
-//                            println("RECEIVER: #${receiver.first.id}")
-//                            println("TYPES:")
-//                            receiver.first.types.forEach {
-//                                println(it)
-//                            }
-
                             devirtualizedCallee
                         }) to receiver.third)
                     }
@@ -641,35 +620,6 @@ internal object Devirtualization {
             return result.asSequence().associateBy({ it.key }, { it.value.first })
         }
 
-//        private fun getRootSet(irModule: IrModuleFragment): Set<CallableDescriptor> {
-//            val rootSet = mutableSetOf<CallableDescriptor>()
-//            val hasMain = context.config.configuration.get(KonanConfigKeys.PRODUCE) == CompilerOutputKind.PROGRAM
-//            if (hasMain)
-//                rootSet.add(findMainEntryPoint(context)!!)
-//            irModule.accept(object: IrElementVisitorVoid {
-//                override fun visitElement(element: IrElement) {
-//                    element.acceptChildrenVoid(this)
-//                }
-//
-//                override fun visitField(declaration: IrField) {
-//                    declaration.initializer?.let {
-//                        // Global field.
-//                        rootSet += declaration.descriptor
-//                    }
-//                }
-//
-//                override fun visitFunction(declaration: IrFunction) {
-//                    if (!hasMain && declaration.descriptor.isExported()
-//                            && declaration.descriptor.modality != Modality.ABSTRACT
-//                            && !declaration.descriptor.externalOrIntrinsic()
-//                            && declaration.descriptor.kind != CallableMemberDescriptor.Kind.FAKE_OVERRIDE)
-//                        // For a library take all visible functions.
-//                        rootSet += declaration.descriptor
-//                }
-//            }, data = null)
-//            return rootSet
-//        }
-
         private fun buildFunctionConstraintGraph(symbol: DataFlowIR.FunctionSymbol,
                                                  nodes: MutableMap<DataFlowIR.Node, ConstraintGraph.Node>,
                                                  variables: MutableMap<DataFlowIR.Node.Variable, ConstraintGraph.Node>,
@@ -688,16 +638,6 @@ internal object Devirtualization {
             }
 
             if (!hasMain && symbol is DataFlowIR.FunctionSymbol.Public && moduleDFG.functions.containsKey(symbol)) {
-//                if (symbol.name!!.contains("resumeWithException")) {
-//                    println("ZZZZZZ: $symbol")
-//                    function.parameterTypes.forEachIndexed { index, type ->
-//                        println(type)
-//                        println(type.resolved().isFinal)
-//                        println(parameters[index].id)
-//                    }
-//                    function.body.nodes.filterIsInstance<DataFlowIR.Node.VtableCall>().forEach { println(it) }
-//                    println()
-//                }
                 // Exported function from the current module.
                 function.parameterTypes.forEachIndexed { index, type ->
                     if (type.resolved().isFinal) return@forEachIndexed
@@ -782,16 +722,6 @@ internal object Devirtualization {
                 val resolvedCallee = callee.resolved()
                 val calleeConstraintGraph = buildFunctionConstraintGraph(resolvedCallee, functionNodesMap, variables, instantiatingClasses)
                 return if (calleeConstraintGraph == null) {
-//                    constraintGraph.concreteClasses.getOrPut(returnType) {
-//                        ConstraintGraph.Node.Source(constraintGraph.nextId(), ConstraintGraph.Type.concrete(returnType), "Class\$$returnType").also {
-//                            constraintGraph.addNode(it)
-//                        }
-//                    }
-//                    constraintGraph.virtualClasses.getOrPut(returnType) {
-//                        ConstraintGraph.Node.Source(constraintGraph.nextId(), ConstraintGraph.Type.virtual(returnType), "Class\$$returnType").also {
-//                            constraintGraph.addNode(it)
-//                        }
-//                    }
                     constraintGraph.externalFunctions.getOrPut(resolvedCallee) {
                         val fictitiousReturnNode = ConstraintGraph.Node.Ordinary(constraintGraph.nextId(), "External$resolvedCallee")
                         val possibleReturnTypes = instantiatingClasses.filter { it.isSubtypeOf(returnType) }
@@ -804,7 +734,6 @@ internal object Devirtualization {
                         }
                         fictitiousReturnNode
                     }
-                    //constraintGraph.virtualNode
                 } else {
                     if (receiverType == null)
                         doCall(calleeConstraintGraph, arguments)
@@ -895,35 +824,6 @@ internal object Devirtualization {
                                 callees.forEach { println("$it") }
                                 println()
                             }
-//                            if (callees.isEmpty()) {
-//                                if (DEBUG > 0) {
-//                                    println("WARNING: no possible callees for call ${node.callee}")
-//                                }
-//                                constraintGraph.voidNode
-//                            } else {
-//                                val returnType = node.returnType.resolved()
-//                                val receiverNode = edgeToConstraintNode(node.arguments[0])
-//                                val castedReceiver = ConstraintGraph.Node.Ordinary(constraintGraph.nextId(), takeName { "CastedReceiver\$${function.symbol}" })
-//                                constraintGraph.addNode(castedReceiver)
-//                                val castedEdge = ConstraintGraph.Node.CastEdge(castedReceiver, receiverType, function.symbol)
-//                                receiverNode.addCastEdge(castedEdge)
-//                                val result = if (callees.size == 1) {
-//                                    doCall(callees[0], listOf(castedReceiver) + node.arguments.drop(1), returnType, possibleReceiverTypes.single())
-//                                } else {
-//                                    val returns = ConstraintGraph.Node.Ordinary(constraintGraph.nextId(), takeName { "VirtualCallReturns\$${function.symbol}" }).also {
-//                                        constraintGraph.addNode(it)
-//                                    }
-//                                    callees.forEachIndexed { index, actualCallee ->
-//                                        doCall(actualCallee, listOf(castedReceiver) + node.arguments.drop(1), returnType, possibleReceiverTypes[index]).addEdge(returns)
-//                                    }
-//                                    returns
-//                                }
-//                                val devirtualizedCallees = possibleReceiverTypes.mapIndexed { index, possibleReceiverType ->
-//                                    DevirtualizedCallee(possibleReceiverType, callees[index])
-//                                }
-//                                constraintGraph.virtualCallSiteReceivers[node] = Triple(castedReceiver, devirtualizedCallees, function.symbol)
-//                                result
-//                            }
                             val returnType = node.returnType.resolved()
                             val receiverNode = edgeToConstraintNode(node.arguments[0])
                             val castedReceiver = ConstraintGraph.Node.Ordinary(constraintGraph.nextId(), takeName { "CastedReceiver\$${function.symbol}" })

@@ -19,9 +19,6 @@ package org.jetbrains.kotlin.backend.konan.optimizations
 import org.jetbrains.kotlin.backend.konan.DirectedGraph
 import org.jetbrains.kotlin.backend.konan.DirectedGraphNode
 import org.jetbrains.kotlin.backend.konan.Context
-import org.jetbrains.kotlin.backend.konan.KonanConfigKeys
-import org.jetbrains.kotlin.backend.konan.llvm.findMainEntryPoint
-import org.jetbrains.kotlin.konan.target.CompilerOutputKind
 
 internal class CallGraphNode(val graph: CallGraph, val symbol: DataFlowIR.FunctionSymbol)
     : DirectedGraphNode<DataFlowIR.FunctionSymbol> {
@@ -325,8 +322,9 @@ internal class CallGraphBuilder(val context: Context,
 //        val rootSet = if (hasMain) {
 //            listOf(symbolTable.mapFunction(findMainEntryPoint(context)!!).resolved()) +
 //                    moduleDFG.functions
-//                            .filter { it.value.isGlobalInitializer }
 //                            .map { it.key }
+//                            .filter { it.isGlobalInitializer }
+//
 //        } else {
 //            moduleDFG.functions.keys.filterIsInstance<DataFlowIR.FunctionSymbol.Public>()
 //        }
