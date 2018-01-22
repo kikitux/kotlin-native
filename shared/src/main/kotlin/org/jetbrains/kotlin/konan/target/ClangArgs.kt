@@ -22,7 +22,7 @@ import org.jetbrains.kotlin.konan.file.File
 class ClangTargetArgs(val target: KonanTarget, konanProperties: KonanPropertyValues) {
 
     val sysRoot = konanProperties.absoluteTargetSysRoot
-    val targetArg = if (konanProperties is LinuxPropertyValues) 
+    val targetArg = if (konanProperties !is ApplePropertyValues) 
         konanProperties.targetArg 
         else null
 
