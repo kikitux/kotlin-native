@@ -39,10 +39,7 @@ import org.jetbrains.kotlin.ir.declarations.IrFunction
 import org.jetbrains.kotlin.ir.declarations.IrModuleFragment
 import org.jetbrains.kotlin.ir.declarations.IrVariable
 import org.jetbrains.kotlin.ir.expressions.*
-import org.jetbrains.kotlin.ir.expressions.impl.IrGetObjectValueImpl
-import org.jetbrains.kotlin.ir.expressions.impl.IrGetValueImpl
-import org.jetbrains.kotlin.ir.expressions.impl.IrSetFieldImpl
-import org.jetbrains.kotlin.ir.expressions.impl.IrTypeOperatorCallImpl
+import org.jetbrains.kotlin.ir.expressions.impl.*
 import org.jetbrains.kotlin.ir.util.getArguments
 import org.jetbrains.kotlin.ir.visitors.IrElementVisitorVoid
 import org.jetbrains.kotlin.ir.visitors.acceptChildrenVoid
@@ -350,6 +347,13 @@ internal class ModuleDFGBuilder(val context: Context, val irModule: IrModuleFrag
                     expressions += expression
             }
 
+            if (expression is IrCall && expression.symbol == scheduleImplSymbol) {
+                // Producer of scheduleImpl is called externally, we need to reflect this somehow.
+                val producerInvocation = IrCallImpl(expression.startOffset, expression.endOffset, scheduleImplProducerInvokeDescriptor)
+                producerInvocation.dispatchReceiver = expression.getValueArgument(2)
+                expressions += producerInvocation
+            }
+
             if (expression is IrReturnableBlock) {
                 returnableBlocks.put(expression.descriptor, expression)
                 returnableBlockValues.put(expression, mutableListOf())
@@ -412,6 +416,10 @@ internal class ModuleDFGBuilder(val context: Context, val irModule: IrModuleFrag
 
     private val arrayGetSymbol = context.ir.symbols.arrayGet
     private val arraySetSymbol = context.ir.symbols.arraySet
+    private val scheduleImplSymbol = context.ir.symbols.scheduleImpl
+    private val scheduleImplProducerParam = scheduleImplSymbol.descriptor.valueParameters[2]
+    private val scheduleImplProducerInvokeDescriptor = scheduleImplProducerParam.type.memberScope
+            .getContributedFunctions(Name.identifier("invoke"), NoLookupLocation.FROM_BACKEND).single()
 
     private inner class FunctionDFGBuilder(val expressionValuesExtractor: ExpressionValuesExtractor,
                                            val variableValues: VariableValues,
@@ -511,64 +519,67 @@ internal class ModuleDFGBuilder(val context: Context, val irModule: IrModuleFrag
                             )
 
                             is IrCall -> {
-                                if (value.symbol == getContinuationSymbol) {
-                                    getContinuation()
-                                } else if (value.symbol == arrayGetSymbol) {
-                                    DataFlowIR.Node.ArrayRead(expressionToEdge(value.dispatchReceiver!!), expressionToEdge(value.getValueArgument(0)!!), value)
-                                } else if (value.symbol == arraySetSymbol) {
-                                    DataFlowIR.Node.ArrayWrite(expressionToEdge(value.dispatchReceiver!!),
+                                when (value.symbol) {
+                                    getContinuationSymbol -> getContinuation()
+
+                                    arrayGetSymbol -> DataFlowIR.Node.ArrayRead(expressionToEdge(value.dispatchReceiver!!),
+                                            expressionToEdge(value.getValueArgument(0)!!), value)
+
+                                    arraySetSymbol -> DataFlowIR.Node.ArrayWrite(expressionToEdge(value.dispatchReceiver!!),
                                             expressionToEdge(value.getValueArgument(0)!!), expressionToEdge(value.getValueArgument(1)!!))
-                                } else {
-                                    val callee = value.descriptor
-                                    val arguments = value.getArguments()
-                                            .map { expressionToEdge(it.second) }
-                                            .let {
-                                                if (callee.isSuspend)
-                                                    it + DataFlowIR.Edge(getContinuation(), null)
-                                                else
-                                                    it
-                                            }
-                                    if (callee is ConstructorDescriptor) {
-                                        DataFlowIR.Node.NewObject(
-                                                symbolTable.mapFunction(callee),
-                                                arguments,
-                                                symbolTable.mapClass(callee.constructedClass),
-                                                value
-                                        )
-                                    } else {
-                                        if (callee.isOverridable && value.superQualifier == null) {
-                                            val owner = callee.containingDeclaration as ClassDescriptor
-                                            val vTableBuilder = context.getVtableBuilder(owner)
-                                            if (owner.isInterface) {
-                                                DataFlowIR.Node.ItableCall(
-                                                        symbolTable.mapFunction(callee.target),
-                                                        symbolTable.mapClass(owner),
-                                                        callee.functionName.localHash.value,
-                                                        arguments,
-                                                        symbolTable.mapType(callee.returnType!!),
-                                                        value
-                                                )
-                                            } else {
-                                                val vtableIndex = vTableBuilder.vtableIndex(callee)
-                                                assert(vtableIndex >= 0, { "Unable to find function $callee in vtable of $owner" })
-                                                DataFlowIR.Node.VtableCall(
-                                                        symbolTable.mapFunction(callee.target),
-                                                        symbolTable.mapClass(owner),
-                                                        vtableIndex,
-                                                        arguments,
-                                                        symbolTable.mapType(callee.returnType!!),
-                                                        value
-                                                )
-                                            }
-                                        } else {
-                                            val actualCallee = (value.superQualifier?.unsubstitutedMemberScope?.getOverridingOf(callee) ?: callee).target
-                                            DataFlowIR.Node.StaticCall(
-                                                    symbolTable.mapFunction(actualCallee),
+
+                                    else -> {
+                                        val callee = value.descriptor
+                                        val arguments = value.getArguments()
+                                                .map { expressionToEdge(it.second) }
+                                                .let {
+                                                    if (callee.isSuspend)
+                                                        it + DataFlowIR.Edge(getContinuation(), null)
+                                                    else
+                                                        it
+                                                }
+                                        if (callee is ConstructorDescriptor) {
+                                            DataFlowIR.Node.NewObject(
+                                                    symbolTable.mapFunction(callee),
                                                     arguments,
-                                                    symbolTable.mapType(actualCallee.returnType!!),
-                                                    actualCallee.dispatchReceiverParameter?.let { symbolTable.mapType(it.type) },
+                                                    symbolTable.mapClass(callee.constructedClass),
                                                     value
                                             )
+                                        } else {
+                                            if (callee.isOverridable && value.superQualifier == null) {
+                                                val owner = callee.containingDeclaration as ClassDescriptor
+                                                val vTableBuilder = context.getVtableBuilder(owner)
+                                                if (owner.isInterface) {
+                                                    DataFlowIR.Node.ItableCall(
+                                                            symbolTable.mapFunction(callee.target),
+                                                            symbolTable.mapClass(owner),
+                                                            callee.functionName.localHash.value,
+                                                            arguments,
+                                                            symbolTable.mapType(callee.returnType!!),
+                                                            value
+                                                    )
+                                                } else {
+                                                    val vtableIndex = vTableBuilder.vtableIndex(callee)
+                                                    assert(vtableIndex >= 0, { "Unable to find function $callee in vtable of $owner" })
+                                                    DataFlowIR.Node.VtableCall(
+                                                            symbolTable.mapFunction(callee.target),
+                                                            symbolTable.mapClass(owner),
+                                                            vtableIndex,
+                                                            arguments,
+                                                            symbolTable.mapType(callee.returnType!!),
+                                                            value
+                                                    )
+                                                }
+                                            } else {
+                                                val actualCallee = (value.superQualifier?.unsubstitutedMemberScope?.getOverridingOf(callee) ?: callee).target
+                                                DataFlowIR.Node.StaticCall(
+                                                        symbolTable.mapFunction(actualCallee),
+                                                        arguments,
+                                                        symbolTable.mapType(actualCallee.returnType!!),
+                                                        actualCallee.dispatchReceiverParameter?.let { symbolTable.mapType(it.type) },
+                                                        value
+                                                )
+                                            }
                                         }
                                     }
                                 }
