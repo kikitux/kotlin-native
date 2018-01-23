@@ -1086,17 +1086,17 @@ ObjHeader** GetReturnSlotIfArena(ObjHeader** returnSlot, ObjHeader** localSlot) 
 }
 
 uintptr_t GetParamFrame(ObjHeader* param) {
-  if (param == nullptr) return 0;
+  if (param == nullptr) return -1;
   auto container = param->container();
   if ((container->refCount_ & CONTAINER_TAG_MASK) != CONTAINER_TAG_STACK)
-    return 0;
+    return -1;
   auto chunk = reinterpret_cast<ContainerChunk*>(container) - 1;
   return reinterpret_cast<uintptr_t>(chunk->arena->frame_) | ARENA_BIT;
 }
 
 ObjHeader** GetParamSlotIfArena(ObjHeader* param, ObjHeader** localSlot) {
   auto frame = GetParamFrame(param);
-  if (frame == 0) return localSlot;
+  if (frame == -1) return localSlot;
   return reinterpret_cast<ObjHeader**>(frame);
 }
 
