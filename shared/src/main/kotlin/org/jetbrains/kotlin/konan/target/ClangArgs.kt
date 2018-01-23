@@ -22,7 +22,7 @@ import org.jetbrains.kotlin.konan.file.File
 class ClangTargetArgs(val target: KonanTarget, konanProperties: KonanPropertyValues) {
 
     val sysRoot = konanProperties.absoluteTargetSysRoot
-    val targetArg = if (konanProperties !is ApplePropertyValues) 
+    val targetArg = if (konanProperties is NonApplePropertyValues) 
         konanProperties.targetArg 
         else null
 
@@ -126,7 +126,6 @@ class ClangTargetArgs(val target: KonanTarget, konanProperties: KonanPropertyVal
 class ClangHostArgs(val hostProperties: KonanPropertyValues) {
 
     val targetToolchain get() = hostProperties.absoluteTargetToolchain
-    val gccToolchain get() = hostProperties.absoluteGccToolchain
     val sysRoot get() = hostProperties.absoluteTargetSysRoot
     val llvmDir get() = hostProperties.absoluteLlvmHome
 
@@ -138,8 +137,8 @@ class ClangHostArgs(val hostProperties: KonanPropertyValues) {
     }
 
     private val extraHostClangArgs = 
-        if (TargetManager.host == KonanTarget.LINUX) {
-            listOf("--gcc-toolchain=$gccToolchain")
+        if (hostProperties is LinuxPropertyValues) {
+            listOf("--gcc-toolchain=${hostProperties.absoluteGccToolchain}")
         } else {
             emptyList()
         }

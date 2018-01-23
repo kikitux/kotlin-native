@@ -30,7 +30,7 @@ typealias ExecutableFile = String
 
 // Use "clang -v -save-temps" to write linkCommand() method 
 // for another implementation of this class.
-abstract class PlatformFlags(val properties: KonanPropertyValues) 
+abstract class LinkerFlags(val properties: KonanPropertyValues) 
    /* : KonanPropertyValues by properties */{
 
     val llvmBin = "${properties.absoluteLlvmHome}/bin"
@@ -63,8 +63,8 @@ abstract class PlatformFlags(val properties: KonanPropertyValues)
     }
 }
 
-open class AndroidPlatform(targetProperties: AndroidPropertyValues)
-    : PlatformFlags(targetProperties), AndroidPropertyValues by targetProperties  {
+open class AndroidLinker(targetProperties: AndroidPropertyValues)
+    : LinkerFlags(targetProperties), AndroidPropertyValues by targetProperties  {
 
     private val prefix = "$absoluteTargetToolchain/bin/"
     private val clang = "$prefix/clang"
@@ -91,8 +91,8 @@ open class AndroidPlatform(targetProperties: AndroidPropertyValues)
     }
 }
 
-open class MacOSBasedPlatform(targetProperties: ApplePropertyValues)
-    : PlatformFlags(targetProperties), ApplePropertyValues by targetProperties {
+open class MacOSBasedLinker(targetProperties: ApplePropertyValues)
+    : LinkerFlags(targetProperties), ApplePropertyValues by targetProperties {
 
     private val linker = "$absoluteTargetToolchain/usr/bin/ld"
     internal val dsymutil = "$llvmBin/llvm-dsymutil"
@@ -166,8 +166,8 @@ open class MacOSBasedPlatform(targetProperties: ApplePropertyValues)
             listOf(dsymutil, "-dump-debug-map" ,executable)
 }
 
-open class LinuxBasedPlatform(targetProperties: LinuxPropertyValues)
-    : PlatformFlags(targetProperties), LinuxPropertyValues by targetProperties {
+open class LinuxBasedLinker(targetProperties: LinuxPropertyValues)
+    : LinkerFlags(targetProperties), LinuxPropertyValues by targetProperties {
 
     override val libGcc: String = "$absoluteTargetSysRoot/${super.libGcc}"
     private val linker = "$absoluteTargetToolchain/bin/ld.gold"
@@ -224,8 +224,8 @@ open class LinuxBasedPlatform(targetProperties: LinuxPropertyValues)
     }
 }
 
-open class MingwPlatform(targetProperties: MingwPropertyValues)
-    : PlatformFlags(targetProperties), MingwPropertyValues by targetProperties {
+open class MingwLinker(targetProperties: MingwPropertyValues)
+    : LinkerFlags(targetProperties), MingwPropertyValues by targetProperties {
 
     private val linker = "$absoluteTargetToolchain/bin/clang++"
 
@@ -247,8 +247,8 @@ open class MingwPlatform(targetProperties: MingwPropertyValues)
     override fun linkCommandSuffix() = linkerKonanFlags
 }
 
-open class WasmPlatform(targetProperties: WasmPropertyValues)
-    : PlatformFlags(targetProperties), WasmPropertyValues by targetProperties {
+open class WasmLinker(targetProperties: WasmPropertyValues)
+    : LinkerFlags(targetProperties), WasmPropertyValues by targetProperties {
 
     private val clang = "clang"
 
@@ -289,19 +289,19 @@ open class WasmPlatform(targetProperties: WasmPropertyValues)
     }
 }
 
-fun platform(target: KonanTarget, properties: KonanPropertyValues): PlatformFlags  =
+fun linker(target: KonanTarget, properties: KonanPropertyValues): LinkerFlags  =
     when (target) {
         KonanTarget.LINUX, KonanTarget.RASPBERRYPI ->
-            LinuxBasedPlatform(properties as LinuxPropertyValues)
+            LinuxBasedLinker(properties as LinuxPropertyValues)
         KonanTarget.LINUX_MIPS32, KonanTarget.LINUX_MIPSEL32 ->
-            LinuxBasedPlatform(properties as LinuxMIPSPropertyValues)
+            LinuxBasedLinker(properties as LinuxMIPSPropertyValues)
         KonanTarget.MACBOOK, KonanTarget.IPHONE, KonanTarget.IPHONE_SIM ->
-            MacOSBasedPlatform(properties as ApplePropertyValues)
+            MacOSBasedLinker(properties as ApplePropertyValues)
         KonanTarget.ANDROID_ARM32, KonanTarget.ANDROID_ARM64 ->
-            AndroidPlatform(properties as AndroidPropertyValues)
+            AndroidLinker(properties as AndroidPropertyValues)
         KonanTarget.MINGW ->
-            MingwPlatform(properties as MingwPropertyValues)
+            MingwLinker(properties as MingwPropertyValues)
         KonanTarget.WASM32 ->
-            WasmPlatform(properties as WasmPropertyValues)
+            WasmLinker(properties as WasmPropertyValues)
     }
 

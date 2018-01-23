@@ -21,6 +21,7 @@ import org.jetbrains.kotlin.konan.exec.Command
 import org.jetbrains.kotlin.konan.file.*
 import org.jetbrains.kotlin.konan.properties.*
 import org.jetbrains.kotlin.konan.target.*
+import org.jetbrains.kotlin.konan.util.visibleName
 
 typealias BitcodeFile = String
 typealias ObjectFile = String
@@ -31,7 +32,7 @@ internal class LinkStage(val context: Context) {
     private val config = context.config.configuration
     private val target = context.config.targetManager.target
     private val properties = context.config.distribution.targetProperties
-    private val platform = platform(target, properties)
+    private val linker = linker(target, properties)
 
     private val optimize = config.get(KonanConfigKeys.OPTIMIZATION) ?: false
     private val debug = config.get(KonanConfigKeys.DEBUG) ?: false
@@ -53,15 +54,15 @@ internal class LinkStage(val context: Context) {
     private fun llvmLto(files: List<BitcodeFile>): ObjectFile {
         val combined = temporary("combined", ".o")
 
-        val tool = platform.llvmLto
+        val tool = linker.llvmLto
         val command = mutableListOf(tool, "-o", combined)
-        command.addNonEmpty(platform.properties.llvmLtoFlags)
+        command.addNonEmpty(linker.properties.llvmLtoFlags)
         when {
-            optimize -> command.addNonEmpty(platform.properties.llvmLtoOptFlags)
-            debug    -> command.addNonEmpty(platform.properties.llvmDebugOptFlags)
-            else     -> command.addNonEmpty(platform.properties.llvmLtoNooptFlags)
+            optimize -> command.addNonEmpty(linker.properties.llvmLtoOptFlags)
+            debug    -> command.addNonEmpty(linker.properties.llvmDebugOptFlags)
+            else     -> command.addNonEmpty(linker.properties.llvmLtoNooptFlags)
         }
-        command.addNonEmpty(platform.properties.llvmLtoDynamicFlags)
+        command.addNonEmpty(linker.properties.llvmLtoDynamicFlags)
         command.addNonEmpty(files)
         runTool(command)
 
@@ -75,12 +76,12 @@ internal class LinkStage(val context: Context) {
     }
 
     private fun targetTool(tool: String, vararg arg: String) {
-        val absoluteToolName = "${platform.properties.absoluteTargetToolchain}/bin/$tool"
+        val absoluteToolName = "${linker.properties.absoluteTargetToolchain}/bin/$tool"
         runTool(absoluteToolName, *arg)
     }
 
     private fun hostLlvmTool(tool: String, args: List<String>) {
-        val absoluteToolName = "${platform.llvmBin}/$tool"
+        val absoluteToolName = "${linker.llvmBin}/$tool"
         val command = listOf(absoluteToolName) + args
         runTool(command)
     }
@@ -92,7 +93,7 @@ internal class LinkStage(val context: Context) {
         val combinedS = temporary("combined", ".s")
         targetTool("llc", combinedBc, "-o", combinedS)
 
-        val s2wasmFlags = (platform as WasmPropertyValues).s2wasmFlags.toTypedArray()
+        val s2wasmFlags = (linker as WasmPropertyValues).s2wasmFlags.toTypedArray()
         val combinedWast = temporary( "combined", ".wast")
         targetTool("s2wasm", combinedS, "-o", combinedWast, *s2wasmFlags)
 
@@ -104,7 +105,7 @@ internal class LinkStage(val context: Context) {
     }
 
     private fun asLinkerArgs(args: List<String>): List<String> {
-        if (platform.useCompilerDriverAsLinker) {
+        if (linker.useCompilerDriverAsLinker) {
             return args
         }
 
@@ -128,7 +129,7 @@ internal class LinkStage(val context: Context) {
     // So we stick to "-alias _main _konan_main" on Mac.
     // And just do the same on Linux.
     private val entryPointSelector: List<String>
-        get() = if (nomain || dynamic) emptyList() else platform.properties.entrySelector
+        get() = if (nomain || dynamic) emptyList() else linker.properties.entrySelector
 
     private fun link(objectFiles: List<ObjectFile>, includedBinaries: List<String>, libraryProvidedLinkerFlags: List<String>): ExecutableFile? {
         val frameworkLinkerArgs: List<String>
@@ -152,21 +153,21 @@ internal class LinkStage(val context: Context) {
         }
 
         try {
-            platform.linkCommand(objectFiles, executable, optimize, debug, dynamic).apply {
-                + platform.targetLibffi
+            linker.linkCommand(objectFiles, executable, optimize, debug, dynamic).apply {
+                + linker.targetLibffi
                 + asLinkerArgs(config.getNotNull(KonanConfigKeys.LINKER_ARGS))
                 + entryPointSelector
                 + frameworkLinkerArgs
-                + platform.linkCommandSuffix()
-                + platform.linkStaticLibraries(includedBinaries)
+                + linker.linkCommandSuffix()
+                + linker.linkStaticLibraries(includedBinaries)
                 + libraryProvidedLinkerFlags
                 logger = context::log
             }.execute()
 
-            if (debug && platform is MacOSBasedPlatform) {
+            if (debug && linker is MacOSBasedLinker) {
                 val outputDsymBundle = context.config.outputFile + ".dSYM" // `outputFile` is either binary or bundle.
 
-                platform.dsymUtilCommand(executable, outputDsymBundle)
+                linker.dsymUtilCommand(executable, outputDsymBundle)
                         .logWith(context::log)
                         .execute()
             }

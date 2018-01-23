@@ -58,7 +58,7 @@ class KonanConfig(val project: Project, val configuration: CompilerConfiguration
         }
     }
 
-    internal val distribution = Distribution(targetManager, 
+    internal val distribution = Distribution(target, 
         configuration.get(KonanConfigKeys.PROPERTY_FILE),
         configuration.get(KonanConfigKeys.RUNTIME_FILE)).apply {
         prepareDependencies(configuration.getBoolean(KonanConfigKeys.CHECK_DEPENDENCIES))

@@ -41,7 +41,6 @@ interface KonanPropertyValues: TargetableExternalStorage {
     val llvmLtoFlags get() = targetList("llvmLtoFlags")
     val llvmLtoDynamicFlags get() = targetList("llvmLtoDynamicFlags")
     val entrySelector get() = targetList("entrySelector")
-    val targetArg get() = targetString("quadruple")
     val linkerOptimizationFlags get() = targetList("linkerOptimizationFlags")
     val linkerKonanFlags get() = targetList("linkerKonanFlags")
     val linkerNoDebugFlags get() = targetList("linkerNoDebugFlags")
@@ -49,6 +48,8 @@ interface KonanPropertyValues: TargetableExternalStorage {
     val llvmDebugOptFlags get() = targetList("llvmDebugOptFlags")
     val targetSysRoot get() = targetString("targetSysRoot")
     val libffiDir get() = targetString("libffiDir")
+    // TODO: This one should belong to LinuxPropertyValues,
+    // but as of now that would break the dependency downloader.
     val gccToolchain get() = targetString("gccToolchain")
 
     // Notice: these ones are host-target.
@@ -63,6 +64,7 @@ interface KonanPropertyValues: TargetableExternalStorage {
 }
 
 interface NonApplePropertyValues: KonanPropertyValues {
+    val targetArg get() = targetString("quadruple")
 }
 
 interface ApplePropertyValues: KonanPropertyValues {
@@ -81,8 +83,8 @@ interface MingwPropertyValues: NonApplePropertyValues {
 }
 
 interface LinuxPropertyValues: NonApplePropertyValues {
-    val dynamicLinker get() = targetString("dynamicLinker")!!
     val libGcc get() = targetString("libGcc")!!
+    val dynamicLinker get() = targetString("dynamicLinker")!!
     val pluginOptimizationFlags get() = targetList("pluginOptimizationFlags")
     val abiSpecificLibraries get() = targetList("abiSpecificLibraries")
 }
@@ -125,7 +127,7 @@ class LinuxProperties(target: KonanTarget, properties: Properties, baseDir: Stri
     : LinuxPropertyValues, KonanPropertiesLoader(target, properties, baseDir)
 
 class LinuxMIPSProperties(target: KonanTarget, properties: Properties, baseDir: String?)
-    : LinuxPropertyValues , KonanPropertiesLoader(target, properties, baseDir)
+    : LinuxMIPSPropertyValues , KonanPropertiesLoader(target, properties, baseDir)
 
 class AndroidProperties(target: KonanTarget, properties: Properties, baseDir: String?)
     : AndroidPropertyValues , KonanPropertiesLoader(target, properties, baseDir)
