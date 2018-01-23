@@ -42,7 +42,6 @@ import org.jetbrains.kotlin.ir.visitors.IrElementVisitorVoid
 import org.jetbrains.kotlin.ir.visitors.acceptChildrenVoid
 import org.jetbrains.kotlin.ir.visitors.acceptVoid
 import org.jetbrains.kotlin.konan.target.KonanTarget
-import org.jetbrains.kotlin.name.FqName
 import org.jetbrains.kotlin.name.Name
 import org.jetbrains.kotlin.resolve.DescriptorUtils
 import org.jetbrains.kotlin.resolve.descriptorUtil.fqNameSafe
@@ -592,13 +591,16 @@ internal class CodeGeneratorVisitor(val context: Context, val lifetimes: Map<IrE
         override fun functionScope(): CodeContext = this
 
 
-        override fun location(line: Int, column: Int): LocationInfo? = scope()?.let {
+        override fun location(line: Int, column: Int) = scope()?.let {
             @Suppress("UNCHECKED_CAST")
             LocationInfo(declaration?.scope() ?:
                     diFunctionScope(name!!, name!!, 0, subroutineType(context, codegen.llvmTargetData, listOf(context.builtIns.intType)), llvmFunction!!) as DIScopeOpaqueRef, line, column)
         }
 
-        override fun scope(): DIScopeOpaqueRef? = declaration?.scope() ?: diFunctionScope(name!!, name!!, 0, subroutineType(context, codegen.llvmTargetData, listOf(context.builtIns.intType)), llvmFunction!!) as DIScopeOpaqueRef
+        override fun scope() = if (context.shouldContainDebugInfo())
+            declaration?.scope() ?: diFunctionScope(name!!, name!!, 0, subroutineType(context, codegen.llvmTargetData, listOf(context.builtIns.intType)), llvmFunction!!) as DIScopeOpaqueRef
+        else
+            null
     }
 
     private val functionGenerationContext
@@ -624,17 +626,9 @@ internal class CodeGeneratorVisitor(val context: Context, val lifetimes: Map<IrE
         if (declaration.descriptor.isExternal)                    return
         if (body == null)                                         return
 
-        val scope = declaration.scope()!!
-        val startLine = declaration.startLine()
-        val startLocationInfo = LocationInfo(
-                scope  = scope,
-                line   = startLine,
-                column = declaration.startColumn())
-        val endLocationInfo = LocationInfo(
-                scope  = scope,
-                line   = declaration.endLine(),
-                column = declaration.endColumn())
-        generateFunction(codegen, declaration.descriptor, startLocationInfo, endLocationInfo) {
+        generateFunction(codegen, declaration.descriptor,
+                declaration.location(declaration.startLine(), declaration.startColumn()),
+                declaration.location(declaration.endLine(), declaration.endColumn())) {
             using(FunctionScope(declaration, it)) {
                 val parameterScope = ParameterScope(declaration, functionGenerationContext)
                 using(parameterScope) {
@@ -658,6 +652,14 @@ internal class CodeGeneratorVisitor(val context: Context, val lifetimes: Map<IrE
         if (context.shouldVerifyBitCode())
             verifyModule(context.llvmModule!!,
                 "${declaration.descriptor.containingDeclaration}::${ir2string(declaration)}")
+    }
+
+    private fun IrFunction.location(line: Int, column:Int): LocationInfo? {
+        return if (context.shouldContainDebugInfo()) LocationInfo(
+                scope = scope()!!,
+                line = line,
+                column = column)
+        else null
     }
 
     //-------------------------------------------------------------------------//
@@ -1743,6 +1745,7 @@ internal class CodeGeneratorVisitor(val context: Context, val lifetimes: Map<IrE
 
     @Suppress("UNCHECKED_CAST")
     private fun FunctionDescriptor.scope(startLine:Int): DIScopeOpaqueRef? {
+        if (!context.shouldContainDebugInfo()) return null
         return context.debugInfo.subprograms.getOrPut(this) {
             memScoped {
                 val subroutineType = subroutineType(context, codegen.llvmTargetData)
@@ -1759,6 +1762,7 @@ internal class CodeGeneratorVisitor(val context: Context, val lifetimes: Map<IrE
     }
 
     private fun diFunctionScope(name: String, linkageName: String, startLine: Int, subroutineType: DISubroutineTypeRef, functionLlvmValue: LLVMValueRef): DISubprogramRef {
+        @Suppress("UNCHECKED_CAST")
         val diFunction = DICreateFunction(
                 builder = context.debugInfo.builder,
                 scope = context.debugInfo.compilationModule as DIScopeOpaqueRef,
