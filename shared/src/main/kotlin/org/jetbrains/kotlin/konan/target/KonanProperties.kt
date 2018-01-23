@@ -33,7 +33,10 @@ interface TargetableExternalStorage {
 
 interface KonanPropertyValues: TargetableExternalStorage {
 
+    val target: KonanTarget
+
     val llvmHome get() = hostString("llvmHome")
+    val llvmVersion get() = hostString("llvmVersion")
 
     // TODO: Delegate to a map?
     val llvmLtoNooptFlags get() = targetList("llvmLtoNooptFlags")
@@ -97,7 +100,7 @@ interface WasmPropertyValues: NonApplePropertyValues {
     val s2wasmFlags get() = targetList("s2wasmFlags")
 }
 
-open class KonanPropertiesLoader(val target: KonanTarget, val properties: Properties, val baseDir: String? = null) : KonanPropertyValues {
+open class KonanPropertiesLoader(override val target: KonanTarget, val properties: Properties, val baseDir: String? = null) : KonanPropertyValues {
     val dependencies get() = hostTargetList("dependencies")
 
     override fun downloadDependencies() {
@@ -142,7 +145,7 @@ class WasmProperties(target: KonanTarget, properties: Properties, baseDir: Strin
     : WasmPropertyValues, KonanPropertiesLoader(target, properties, baseDir)
 
 
-fun konanProperties(target: KonanTarget, properties: Properties, baseDir: String?) = when (target)  {
+internal fun konanProperties(target: KonanTarget, properties: Properties, baseDir: String?) = when (target)  {
         KonanTarget.LINUX, KonanTarget.RASPBERRYPI ->
             LinuxProperties(target, properties, baseDir)
         KonanTarget.LINUX_MIPS32, KonanTarget.LINUX_MIPSEL32 ->
@@ -156,10 +159,11 @@ fun konanProperties(target: KonanTarget, properties: Properties, baseDir: String
         KonanTarget.WASM32 ->
             WasmProperties(target, properties, baseDir)
     }
-
-class KonanTargetManager(val properties: Properties, val baseDir: String? = null) {
+/*
+internal class KonanPropertyManager(val properties: Properties, val baseDir: String? = null) {
     private val enabledTargets = TargetManager.enabled
     val konanProperties = enabledTargets.map {
         it to konanProperties(it, properties, baseDir)
     }.toMap()
 }
+*/

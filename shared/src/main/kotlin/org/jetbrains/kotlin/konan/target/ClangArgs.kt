@@ -19,8 +19,9 @@ package org.jetbrains.kotlin.konan.target
 import org.jetbrains.kotlin.konan.properties.*
 import org.jetbrains.kotlin.konan.file.File
 
-class ClangTargetArgs(val target: KonanTarget, konanProperties: KonanPropertyValues) {
+class ClangTargetArgs(konanProperties: KonanPropertyValues) {
 
+    val target = konanProperties.target
     val sysRoot = konanProperties.absoluteTargetSysRoot
     val targetArg = if (konanProperties is NonApplePropertyValues) 
         konanProperties.targetArg 

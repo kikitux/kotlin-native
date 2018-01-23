@@ -2381,9 +2381,10 @@ if (isMac()) {
 }
 
 task jsinterop_math(type: RunStandaloneKonanTest) {
+    dependsOn ':wasm32PlatformLibs'
     doFirst {
         // TODO: We probably need a NativeInteropPlugin for jsinterop?
-        "jsinterop -pkg kotlinx.interop.wasm.math -o $buildDir/jsmath -target wasm32".execute()
+        "$distDir/bin/jsinterop -pkg kotlinx.interop.wasm.math -o $buildDir/jsmath -target wasm32".execute()
 
     }
     disabled = (project.testTarget != 'wasm32')

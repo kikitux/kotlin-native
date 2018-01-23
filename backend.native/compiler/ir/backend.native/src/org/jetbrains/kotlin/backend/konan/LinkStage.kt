@@ -21,7 +21,6 @@ import org.jetbrains.kotlin.konan.exec.Command
 import org.jetbrains.kotlin.konan.file.*
 import org.jetbrains.kotlin.konan.properties.*
 import org.jetbrains.kotlin.konan.target.*
-import org.jetbrains.kotlin.konan.util.visibleName
 
 typealias BitcodeFile = String
 typealias ObjectFile = String
@@ -31,8 +30,9 @@ internal class LinkStage(val context: Context) {
 
     private val config = context.config.configuration
     private val target = context.config.targetManager.target
-    private val properties = context.config.distribution.targetProperties
-    private val linker = linker(target, properties)
+    private val linker = context.config.platform.linker
+    //private val properties = context.config.distribution.targetProperties
+    //private val linker = linker(target, properties)
 
     private val optimize = config.get(KonanConfigKeys.OPTIMIZATION) ?: false
     private val debug = config.get(KonanConfigKeys.DEBUG) ?: false

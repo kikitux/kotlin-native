@@ -18,55 +18,70 @@ package org.jetbrains.kotlin.konan.target
 
 import org.jetbrains.kotlin.konan.properties.*
 
-class ClangManager(val properties: Properties, val baseDir: String) {
-    private val host = TargetManager.host
-    private val enabledTargets = TargetManager.enabled
-    private val konanProperties = KonanTargetManager(properties, baseDir).konanProperties
+class ClangManager(val hostProperties: KonanPropertyValues, val targetProperties: KonanPropertyValues) {
+    val hostArgs = ClangHostArgs(hostProperties)
+    val targetArgs = ClangTargetArgs(targetProperties) 
 
-    private val targetClangArgs = enabledTargets.map {
-        it to ClangTargetArgs(it, konanProperties[it]!!) 
-    }.toMap()
+    val targetClangArgs = 
+        (hostArgs.commonClangArgs + targetArgs.specificClangArgs).toTypedArray()
 
-    private val hostClang = ClangHostArgs(konanProperties[host]!!)
+    val targetClangArgsForKonanSources =
+        targetClangArgs + targetArgs.clangArgsSpecificForKonanSources
 
-    // These are converted to arrays to be convenient
-    // in groovy plugins.
-    val hostClangArgs = (hostClang.commonClangArgs + targetClangArgs[host]!!.specificClangArgs).toTypedArray()
-
-    fun targetClangArgs(target: KonanTarget)
-        = (hostClang.commonClangArgs + targetClangArgs[target]!!.specificClangArgs).toTypedArray()
-
-    fun targetClangArgsForKonanSources(target: KonanTarget) =
-            targetClangArgs(target) + targetClangArgs[target]!!.clangArgsSpecificForKonanSources
-
-    val hostCompilerArgsForJni = hostClang.hostCompilerArgsForJni.toTypedArray()
-
-    fun targetLibclangArgs(target: KonanTarget): List<String> {
+    val targetLibclangArgs: List<String> get() {
         // libclang works not exactly the same way as the clang binary and
         // (in particular) uses different default header search path.
         // See e.g. http://lists.llvm.org/pipermail/cfe-dev/2013-November/033680.html
         // We workaround the problem with -isystem flag below.
-        val llvmVersion = properties.hostString("llvmVersion")!!
-        val llvmHome = konanProperties[target]!!.absoluteLlvmHome
+        val llvmVersion = hostProperties.llvmVersion
+        val llvmHome = targetProperties.absoluteLlvmHome
         val isystemArgs = listOf("-isystem", "$llvmHome/lib/clang/$llvmVersion/include")
 
-        return isystemArgs + targetClangArgs(target).toList()
+        return isystemArgs + targetClangArgs.toList()
     }
 
-    fun targetClangCmd(target: KonanTarget)
-        = listOf("${hostClang.llvmDir}/bin/clang") + targetClangArgs(target)
+    val hostCompilerArgsForJni = hostArgs.hostCompilerArgsForJni.toTypedArray()
 
-    fun targetClangXXCmd(target: KonanTarget)
-        = listOf("${hostClang.llvmDir}/bin/clang++") + targetClangArgs(target)
+    val targetClangCmd
+        = listOf("${hostArgs.llvmDir}/bin/clang") + targetClangArgs
+
+    val targetClangXXCmd
+        = listOf("${hostArgs.llvmDir}/bin/clang++") + targetClangArgs
+
+    fun clangC(vararg userArgs: String) = targetClangCmd + userArgs.asList()
+
+    fun clangCXX(vararg userArgs: String) = targetClangXXCmd + userArgs.asList()
+
+    companion object {
+
+        //val hostArgsArgs = ClangArgs(host).targetClangArgs
+    }
 }
+/*
+class ClangManager(val konanProperties: KonanPropertyManager) {
+    private val host = TargetManager.host
+    private val enabledTargets = TargetManager.enabled
+    private val konanProperties = konanProperties.konanProperties
 
+    private val clangArgs = enabledTargets.map {
+        it to ClangArgs(konanProperties[host]!!, konanProperties[target]!!) 
+    }.toMap()
+
+    val hostArgsArgs = clangArgs[host]!!.targetClangARgs
+    fun targetClangArgs(target) = clangArgs[target]!!.targetClangARgs
+
+
+    // These are converted to arrays to be convenient
+    // in groovy plugins.
+/*
+    val hostArgsArgs = (hostArgs.commonClangArgs + targetClangArgs[host]!!.specificClangArgs).toTypedArray()
+*/
+}
+*/
+/*
 class TargetClang(private val clangManager: ClangManager, private val target: KonanTarget) {
     constructor (properties: Properties, baseDir: String, target: KonanTarget) 
         : this (ClangManager(properties, baseDir), target)
-
-    fun clangC(vararg userArgs: String) = clangManager.targetClangCmd(target) + userArgs.asList()
-
-    fun clangCXX(vararg userArgs: String) = clangManager.targetClangXXCmd(target) + userArgs.asList()
 }
 
-
+*/

@@ -103,7 +103,7 @@ internal class ObjCExport(val context: Context) {
             KonanTarget.MACBOOK -> "MacOSX"
             else -> error(target)
         }
-        val properties = context.config.distribution.targetProperties as ApplePropertyValues
+        val properties = context.config.platform.targetProperties as ApplePropertyValues
         val minimumOsVersion = properties.osVersionMin!!
 
         val contents = StringBuilder()
