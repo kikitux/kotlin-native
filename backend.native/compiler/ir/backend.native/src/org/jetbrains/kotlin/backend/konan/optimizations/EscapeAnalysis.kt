@@ -721,7 +721,7 @@ internal object EscapeAnalysis {
         assert(lifetimes.isEmpty())
 
         val intraproceduralAnalysisResult =
-                IntraproceduralAnalysis(moduleDFG.functions, callGraph).analyze()
+                IntraproceduralAnalysis(moduleDFG.functions + externalModulesDFG.functionDFGs, callGraph).analyze()
         InterproceduralAnalysis(callGraph, intraproceduralAnalysisResult, externalModulesDFG, lifetimes).analyze()
     }
 }
