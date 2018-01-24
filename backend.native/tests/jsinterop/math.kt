@@ -1,4 +1,5 @@
 import kotlinx.interop.wasm.math.*
+import kotlinx.wasm.jsinterop.*
 
 fun main(args: Array<String>) {
 
