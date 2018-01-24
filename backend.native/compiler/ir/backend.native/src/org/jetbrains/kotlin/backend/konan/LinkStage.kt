@@ -29,6 +29,7 @@ internal class LinkStage(val context: Context) {
 
     private val config = context.config.configuration
     private val target = context.config.targetManager.target
+    private val platform = context.config.platform
     private val linker = context.config.platform.linker
 
     private val optimize = config.get(KonanConfigKeys.OPTIMIZATION) ?: false
@@ -51,15 +52,15 @@ internal class LinkStage(val context: Context) {
     private fun llvmLto(files: List<BitcodeFile>): ObjectFile {
         val combined = temporary("combined", ".o")
 
-        val tool = linker.llvmLto
+        val tool = "${platform.absoluteLlvmHome}/bin/llvm-lto"
         val command = mutableListOf(tool, "-o", combined)
-        command.addNonEmpty(linker.configurables.llvmLtoFlags)
+        command.addNonEmpty(platform.llvmLtoFlags)
         when {
-            optimize -> command.addNonEmpty(linker.configurables.llvmLtoOptFlags)
-            debug    -> command.addNonEmpty(linker.configurables.llvmDebugOptFlags)
-            else     -> command.addNonEmpty(linker.configurables.llvmLtoNooptFlags)
+            optimize -> command.addNonEmpty(platform.llvmLtoOptFlags)
+            debug    -> command.addNonEmpty(platform.llvmDebugOptFlags)
+            else     -> command.addNonEmpty(platform.llvmLtoNooptFlags)
         }
-        command.addNonEmpty(linker.configurables.llvmLtoDynamicFlags)
+        command.addNonEmpty(platform.llvmLtoDynamicFlags)
         command.addNonEmpty(files)
         runTool(command)
 
@@ -73,12 +74,12 @@ internal class LinkStage(val context: Context) {
     }
 
     private fun targetTool(tool: String, vararg arg: String) {
-        val absoluteToolName = "${linker.configurables.absoluteTargetToolchain}/bin/$tool"
+        val absoluteToolName = "${platform.absoluteTargetToolchain}/bin/$tool"
         runTool(absoluteToolName, *arg)
     }
 
     private fun hostLlvmTool(tool: String, args: List<String>) {
-        val absoluteToolName = "${linker.llvmBin}/$tool"
+        val absoluteToolName = "${platform.absoluteLlvmHome}/bin/$tool"
         val command = listOf(absoluteToolName) + args
         runTool(command)
     }
@@ -90,7 +91,7 @@ internal class LinkStage(val context: Context) {
         val combinedS = temporary("combined", ".s")
         targetTool("llc", combinedBc, "-o", combinedS)
 
-        val s2wasmFlags = (linker as WasmConfigurables).s2wasmFlags.toTypedArray()
+        val s2wasmFlags = (platform as WasmConfigurables).s2wasmFlags.toTypedArray()
         val combinedWast = temporary( "combined", ".wast")
         targetTool("s2wasm", combinedS, "-o", combinedWast, *s2wasmFlags)
 
@@ -126,7 +127,7 @@ internal class LinkStage(val context: Context) {
     // So we stick to "-alias _main _konan_main" on Mac.
     // And just do the same on Linux.
     private val entryPointSelector: List<String>
-        get() = if (nomain || dynamic) emptyList() else linker.configurables.entrySelector
+        get() = if (nomain || dynamic) emptyList() else platform.entrySelector
 
     private fun link(objectFiles: List<ObjectFile>, includedBinaries: List<String>, libraryProvidedLinkerFlags: List<String>): ExecutableFile? {
         val frameworkLinkerArgs: List<String>

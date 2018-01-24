@@ -18,14 +18,14 @@ package org.jetbrains.kotlin.konan.target
 
 import org.jetbrains.kotlin.konan.properties.*
 
-class Platform(val targetConfigurables: Configurables) 
-    : Configurables by targetConfigurables {
+class Platform(val configurables: Configurables) 
+    : Configurables by configurables {
 
     val clang by lazy {
-        ClangArgs(targetConfigurables)
+        ClangArgs(configurables)
     }
     val linker by lazy {
-        linker(targetConfigurables)
+        linker(configurables)
     }
 }
 

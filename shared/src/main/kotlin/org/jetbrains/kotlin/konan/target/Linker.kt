@@ -30,9 +30,8 @@ typealias ExecutableFile = String
 abstract class LinkerFlags(val configurables: Configurables)
    /* : Configurables by configurables */{
 
-    val llvmBin = "${configurables.absoluteLlvmHome}/bin"
-    val llvmLib = "${configurables.absoluteLlvmHome}/lib"
-    val llvmLto = "$llvmBin/llvm-lto"
+    protected val llvmBin = "${configurables.absoluteLlvmHome}/bin"
+    protected val llvmLib = "${configurables.absoluteLlvmHome}/lib"
 
     private val libLTODir = when (TargetManager.host) {
         KonanTarget.MACBOOK, KonanTarget.LINUX -> llvmLib
@@ -92,7 +91,7 @@ open class MacOSBasedLinker(targetProperties: AppleConfigurables)
     : LinkerFlags(targetProperties), AppleConfigurables by targetProperties {
 
     private val linker = "$absoluteTargetToolchain/usr/bin/ld"
-    internal val dsymutil = "$llvmBin/llvm-dsymutil"
+    internal val dsymutil = "$absoluteLlvmHome/bin/llvm-dsymutil"
 
     open val osVersionMinFlags: List<String> by lazy {
         listOf(
