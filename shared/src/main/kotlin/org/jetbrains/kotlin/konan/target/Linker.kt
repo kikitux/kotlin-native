@@ -27,11 +27,11 @@ typealias ExecutableFile = String
 
 // Use "clang -v -save-temps" to write linkCommand() method 
 // for another implementation of this class.
-abstract class LinkerFlags(val properties: Configurables)
-   /* : Configurables by properties */{
+abstract class LinkerFlags(val configurables: Configurables)
+   /* : Configurables by configurables */{
 
-    val llvmBin = "${properties.absoluteLlvmHome}/bin"
-    val llvmLib = "${properties.absoluteLlvmHome}/lib"
+    val llvmBin = "${configurables.absoluteLlvmHome}/bin"
+    val llvmLib = "${configurables.absoluteLlvmHome}/lib"
     val llvmLto = "$llvmBin/llvm-lto"
 
     private val libLTODir = when (TargetManager.host) {
@@ -42,7 +42,7 @@ abstract class LinkerFlags(val properties: Configurables)
 
     val libLTO = "$libLTODir/${System.mapLibraryName("LTO")}"
 
-    val targetLibffi = properties.libffiDir ?.let { listOf("${properties.absoluteLibffiDir}/lib/libffi.a") } ?: emptyList()
+    val targetLibffi = configurables.libffiDir ?.let { listOf("${configurables.absoluteLibffiDir}/lib/libffi.a") } ?: emptyList()
 
     open val useCompilerDriverAsLinker: Boolean get() = false // TODO: refactor.
 
@@ -175,9 +175,9 @@ open class LinuxBasedLinker(targetProperties: LinuxConfigurables)
         = binaries.filter { it.isUnixStaticLib }
 
     override fun linkCommand(objectFiles: List<ObjectFile>, executable: ExecutableFile, optimize: Boolean, debug: Boolean, dynamic: Boolean): Command {
-        val isMips = (properties is LinuxMIPSConfigurables)
+        val isMips = (configurables is LinuxMIPSConfigurables)
 
-        // TODO: Can we extract more to the konan.properties?
+        // TODO: Can we extract more to the konan.configurables?
         return Command(linker).apply {
             + "--sysroot=${absoluteTargetSysRoot}"
             + "-export-dynamic"
@@ -286,19 +286,19 @@ open class WasmLinker(targetProperties: WasmConfigurables)
     }
 }
 
-fun linker(properties: Configurables): LinkerFlags  =
-    when (properties.target) {
+fun linker(configurables: Configurables): LinkerFlags  =
+    when (configurables.target) {
         KonanTarget.LINUX, KonanTarget.RASPBERRYPI ->
-            LinuxBasedLinker(properties as LinuxConfigurables)
+            LinuxBasedLinker(configurables as LinuxConfigurables)
         KonanTarget.LINUX_MIPS32, KonanTarget.LINUX_MIPSEL32 ->
-            LinuxBasedLinker(properties as LinuxMIPSConfigurables)
+            LinuxBasedLinker(configurables as LinuxMIPSConfigurables)
         KonanTarget.MACBOOK, KonanTarget.IPHONE, KonanTarget.IPHONE_SIM ->
-            MacOSBasedLinker(properties as AppleConfigurables)
+            MacOSBasedLinker(configurables as AppleConfigurables)
         KonanTarget.ANDROID_ARM32, KonanTarget.ANDROID_ARM64 ->
-            AndroidLinker(properties as AndroidConfigurables)
+            AndroidLinker(configurables as AndroidConfigurables)
         KonanTarget.MINGW ->
-            MingwLinker(properties as MingwConfigurables)
+            MingwLinker(configurables as MingwConfigurables)
         KonanTarget.WASM32 ->
-            WasmLinker(properties as WasmConfigurables)
+            WasmLinker(configurables as WasmConfigurables)
     }
 

@@ -30,8 +30,6 @@ internal class LinkStage(val context: Context) {
     private val config = context.config.configuration
     private val target = context.config.targetManager.target
     private val linker = context.config.platform.linker
-    //private val properties = context.config.distribution.targetProperties
-    //private val linker = linker(target, properties)
 
     private val optimize = config.get(KonanConfigKeys.OPTIMIZATION) ?: false
     private val debug = config.get(KonanConfigKeys.DEBUG) ?: false
@@ -55,13 +53,13 @@ internal class LinkStage(val context: Context) {
 
         val tool = linker.llvmLto
         val command = mutableListOf(tool, "-o", combined)
-        command.addNonEmpty(linker.properties.llvmLtoFlags)
+        command.addNonEmpty(linker.configurables.llvmLtoFlags)
         when {
-            optimize -> command.addNonEmpty(linker.properties.llvmLtoOptFlags)
-            debug    -> command.addNonEmpty(linker.properties.llvmDebugOptFlags)
-            else     -> command.addNonEmpty(linker.properties.llvmLtoNooptFlags)
+            optimize -> command.addNonEmpty(linker.configurables.llvmLtoOptFlags)
+            debug    -> command.addNonEmpty(linker.configurables.llvmDebugOptFlags)
+            else     -> command.addNonEmpty(linker.configurables.llvmLtoNooptFlags)
         }
-        command.addNonEmpty(linker.properties.llvmLtoDynamicFlags)
+        command.addNonEmpty(linker.configurables.llvmLtoDynamicFlags)
         command.addNonEmpty(files)
         runTool(command)
 
@@ -75,7 +73,7 @@ internal class LinkStage(val context: Context) {
     }
 
     private fun targetTool(tool: String, vararg arg: String) {
-        val absoluteToolName = "${linker.properties.absoluteTargetToolchain}/bin/$tool"
+        val absoluteToolName = "${linker.configurables.absoluteTargetToolchain}/bin/$tool"
         runTool(absoluteToolName, *arg)
     }
 
@@ -128,7 +126,7 @@ internal class LinkStage(val context: Context) {
     // So we stick to "-alias _main _konan_main" on Mac.
     // And just do the same on Linux.
     private val entryPointSelector: List<String>
-        get() = if (nomain || dynamic) emptyList() else linker.properties.entrySelector
+        get() = if (nomain || dynamic) emptyList() else linker.configurables.entrySelector
 
     private fun link(objectFiles: List<ObjectFile>, includedBinaries: List<String>, libraryProvidedLinkerFlags: List<String>): ExecutableFile? {
         val frameworkLinkerArgs: List<String>
