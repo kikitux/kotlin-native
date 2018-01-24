@@ -18,22 +18,17 @@ package org.jetbrains.kotlin.konan.target
 
 import org.jetbrains.kotlin.konan.properties.*
 
-class Platform(hostProperties: KonanPropertyValues, val targetProperties: KonanPropertyValues) {
+class Platform(hostProperties: KonanPropertyValues, 
+    val targetProperties: KonanPropertyValues) : KonanPropertyValues by targetProperties {
 
     val clang by lazy {
+        // TODO: hostProperties should not be passed here.
+        // Need to clean up host clang support a little.
         ClangManager(hostProperties, targetProperties)
     }
-
     val linker by lazy {
-        linker(targetProperties.target, targetProperties)
+        linker(targetProperties)
     }
-
-    fun downloadDependencies() = targetProperties.downloadDependencies()
-
-    // TODO: remove these.
-    val llvmHome get() = targetProperties.absoluteLlvmHome
-    val sysRoot get() = targetProperties.absoluteTargetSysRoot
-
 }
 
 class PlatformManager(properties: Properties, baseDir: String) {

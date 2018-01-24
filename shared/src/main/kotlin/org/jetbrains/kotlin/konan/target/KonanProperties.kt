@@ -16,8 +16,7 @@
 
 package org.jetbrains.kotlin.konan.properties
 
-import org.jetbrains.kotlin.konan.file.*
-import org.jetbrains.kotlin.konan.target.*
+import org.jetbrains.kotlin.konan.target.KonanTarget
 import org.jetbrains.kotlin.konan.util.DependencyProcessor
 
 interface TargetableExternalStorage {
@@ -53,7 +52,7 @@ interface KonanPropertyValues: TargetableExternalStorage {
     val libffiDir get() = targetString("libffiDir")
     // TODO: This one should belong to LinuxPropertyValues,
     // but as of now that would break the dependency downloader.
-    val gccToolchain get() = targetString("gccToolchain")
+    val gccToolchain get() = hostString("gccToolchain")
 
     // Notice: these ones are host-target.
     val targetToolchain get() = hostTargetString("targetToolchain")
@@ -159,11 +158,4 @@ internal fun konanProperties(target: KonanTarget, properties: Properties, baseDi
         KonanTarget.WASM32 ->
             WasmProperties(target, properties, baseDir)
     }
-/*
-internal class KonanPropertyManager(val properties: Properties, val baseDir: String? = null) {
-    private val enabledTargets = TargetManager.enabled
-    val konanProperties = enabledTargets.map {
-        it to konanProperties(it, properties, baseDir)
-    }.toMap()
-}
-*/
+

@@ -289,8 +289,8 @@ open class WasmLinker(targetProperties: WasmPropertyValues)
     }
 }
 
-fun linker(target: KonanTarget, properties: KonanPropertyValues): LinkerFlags  =
-    when (target) {
+fun linker(properties: KonanPropertyValues): LinkerFlags  =
+    when (properties.target) {
         KonanTarget.LINUX, KonanTarget.RASPBERRYPI ->
             LinuxBasedLinker(properties as LinuxPropertyValues)
         KonanTarget.LINUX_MIPS32, KonanTarget.LINUX_MIPSEL32 ->

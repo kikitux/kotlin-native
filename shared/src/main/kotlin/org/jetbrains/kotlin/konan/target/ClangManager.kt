@@ -18,7 +18,7 @@ package org.jetbrains.kotlin.konan.target
 
 import org.jetbrains.kotlin.konan.properties.*
 
-class ClangManager(val hostProperties: KonanPropertyValues, val targetProperties: KonanPropertyValues) {
+class ClangManager(hostProperties: KonanPropertyValues, val targetProperties: KonanPropertyValues) {
     val hostArgs = ClangHostArgs(hostProperties)
     val targetArgs = ClangTargetArgs(targetProperties) 
 
@@ -33,7 +33,7 @@ class ClangManager(val hostProperties: KonanPropertyValues, val targetProperties
         // (in particular) uses different default header search path.
         // See e.g. http://lists.llvm.org/pipermail/cfe-dev/2013-November/033680.html
         // We workaround the problem with -isystem flag below.
-        val llvmVersion = hostProperties.llvmVersion
+        val llvmVersion = targetProperties.llvmVersion
         val llvmHome = targetProperties.absoluteLlvmHome
         val isystemArgs = listOf("-isystem", "$llvmHome/lib/clang/$llvmVersion/include")
 
@@ -43,45 +43,12 @@ class ClangManager(val hostProperties: KonanPropertyValues, val targetProperties
     val hostCompilerArgsForJni = hostArgs.hostCompilerArgsForJni.toTypedArray()
 
     val targetClangCmd
-        = listOf("${hostArgs.llvmDir}/bin/clang") + targetClangArgs
+        = listOf("${targetProperties.absoluteLlvmHome}/bin/clang") + targetClangArgs
 
     val targetClangXXCmd
-        = listOf("${hostArgs.llvmDir}/bin/clang++") + targetClangArgs
+        = listOf("${targetProperties.absoluteLlvmHome}/bin/clang++") + targetClangArgs
 
     fun clangC(vararg userArgs: String) = targetClangCmd + userArgs.asList()
 
     fun clangCXX(vararg userArgs: String) = targetClangXXCmd + userArgs.asList()
-
-    companion object {
-
-        //val hostArgsArgs = ClangArgs(host).targetClangArgs
-    }
 }
-/*
-class ClangManager(val konanProperties: KonanPropertyManager) {
-    private val host = TargetManager.host
-    private val enabledTargets = TargetManager.enabled
-    private val konanProperties = konanProperties.konanProperties
-
-    private val clangArgs = enabledTargets.map {
-        it to ClangArgs(konanProperties[host]!!, konanProperties[target]!!) 
-    }.toMap()
-
-    val hostArgsArgs = clangArgs[host]!!.targetClangARgs
-    fun targetClangArgs(target) = clangArgs[target]!!.targetClangARgs
-
-
-    // These are converted to arrays to be convenient
-    // in groovy plugins.
-/*
-    val hostArgsArgs = (hostArgs.commonClangArgs + targetClangArgs[host]!!.specificClangArgs).toTypedArray()
-*/
-}
-*/
-/*
-class TargetClang(private val clangManager: ClangManager, private val target: KonanTarget) {
-    constructor (properties: Properties, baseDir: String, target: KonanTarget) 
-        : this (ClangManager(properties, baseDir), target)
-}
-
-*/
