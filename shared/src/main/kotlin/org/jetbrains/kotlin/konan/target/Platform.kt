@@ -18,12 +18,12 @@ package org.jetbrains.kotlin.konan.target
 
 import org.jetbrains.kotlin.konan.properties.*
 
-class Platform(hostProperties: Configurables,
-               val targetConfigurables: Configurables) : Configurables by targetConfigurables {
+// TODO: hostProperties should not be passed here.
+// Need to clean up host clang support a little.
+class Platform(hostProperties: Configurables, val targetConfigurables: Configurables) 
+    : Configurables by targetConfigurables {
 
     val clang by lazy {
-        // TODO: hostProperties should not be passed here.
-        // Need to clean up host clang support a little.
         ClangManager(hostProperties, targetConfigurables)
     }
     val linker by lazy {
