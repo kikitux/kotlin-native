@@ -62,14 +62,7 @@ interface AppleConfigurables : Configurables {
     val osVersionMinFlagLd get() = targetString("osVersionMinFlagLd")!!
 }
 
-interface MingwConfigurables : NonAppleConfigurables {
-    val mingwWithLlvm: String?
-        get() { 
-            // TODO: make it a property in the konan.properties.
-            // Use (equal) llvmHome fow now.
-            return targetString("llvmHome")
-        }
-}
+interface MingwConfigurables : NonAppleConfigurables
 
 interface LinuxConfigurables : NonAppleConfigurables {
     val libGcc get() = targetString("libGcc")!!

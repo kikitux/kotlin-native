@@ -18,13 +18,11 @@ package org.jetbrains.kotlin.konan.target
 
 import org.jetbrains.kotlin.konan.properties.*
 
-// TODO: hostProperties should not be passed here.
-// Need to clean up host clang support a little.
-class Platform(hostProperties: Configurables, val targetConfigurables: Configurables) 
+class Platform(val targetConfigurables: Configurables) 
     : Configurables by targetConfigurables {
 
     val clang by lazy {
-        ClangManager(hostProperties, targetConfigurables)
+        ClangArgs(targetConfigurables)
     }
     val linker by lazy {
         linker(targetConfigurables)
@@ -33,17 +31,11 @@ class Platform(hostProperties: Configurables, val targetConfigurables: Configura
 
 class PlatformManager(properties: Properties, baseDir: String) {
     private val host = TargetManager.host
-    private val enabledTargets = TargetManager.enabled
-    private val hostConfigurables = loadConfigurables(host, properties, baseDir)
-    private val platforms = enabledTargets.map {
-        it to Platform(hostConfigurables, loadConfigurables(it, properties, baseDir))
+    private val platforms = TargetManager.enabled.map {
+        it to Platform(loadConfigurables(it, properties, baseDir))
     }.toMap()
 
     fun platform(target: KonanTarget) = platforms[target]!!
-
-    val hostClang = platforms[host]!!.clang
-    val hostClangArgs = hostClang.hostArgs
-    val hostClangPath: List<String> = hostClangArgs.hostClangPath
-    val hostCompilerArgsForJni = hostClang.hostCompilerArgsForJni
+    val hostPlatform = platforms[host]!!
 }
 

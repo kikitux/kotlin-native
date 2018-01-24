@@ -98,13 +98,13 @@ void setupClang(Project project) {
 
                 toolChains {
                     clang(Clang) {
-                        hostClangPath.each {
+                        hostPlatform.clang.clangPaths.each {
                             path it
                         }
 
                         eachPlatform { // TODO: will not work when cross-compiling
                             [cCompiler, cppCompiler, linker].each {
-                                it.withArguments { it.addAll(project.hostClangArgs) }
+                                it.withArguments { it.addAll(project.hostPlatform.clangArgs) }
                             }
 
                         }
