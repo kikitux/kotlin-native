@@ -19,24 +19,24 @@ package org.jetbrains.kotlin.konan.target
 import org.jetbrains.kotlin.konan.properties.*
 
 class Platform(hostProperties: Configurables,
-               val targetProperties: Configurables) : Configurables by targetProperties {
+               val targetConfigurables: Configurables) : Configurables by targetConfigurables {
 
     val clang by lazy {
         // TODO: hostProperties should not be passed here.
         // Need to clean up host clang support a little.
-        ClangManager(hostProperties, targetProperties)
+        ClangManager(hostProperties, targetConfigurables)
     }
     val linker by lazy {
-        linker(targetProperties)
+        linker(targetConfigurables)
     }
 }
 
 class PlatformManager(properties: Properties, baseDir: String) {
     private val host = TargetManager.host
     private val enabledTargets = TargetManager.enabled
-    private val hostProperties = konanProperties(host, properties, baseDir)
+    private val hostConfigurables = loadConfigurables(host, properties, baseDir)
     private val platforms = enabledTargets.map {
-        it to Platform(hostProperties, konanProperties(it, properties, baseDir))
+        it to Platform(hostConfigurables, loadConfigurables(it, properties, baseDir))
     }.toMap()
 
     fun platform(target: KonanTarget) = platforms[target]!!

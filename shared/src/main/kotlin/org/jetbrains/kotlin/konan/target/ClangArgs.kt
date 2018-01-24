@@ -22,7 +22,7 @@ class ClangTargetArgs(konanProperties: Configurables) {
 
     val target = konanProperties.target
     val sysRoot = konanProperties.absoluteTargetSysRoot
-    val targetArg = if (konanProperties is NonApplePropertyValues) 
+    val targetArg = if (konanProperties is NonAppleConfigurables)
         konanProperties.targetArg 
         else null
 
@@ -137,7 +137,7 @@ class ClangHostArgs(val hostProperties: Configurables) {
     }
 
     private val extraHostClangArgs = 
-        if (hostProperties is LinuxPropertyValues) {
+        if (hostProperties is LinuxConfigurables) {
             listOf("--gcc-toolchain=${hostProperties.absoluteGccToolchain}")
         } else {
             emptyList()

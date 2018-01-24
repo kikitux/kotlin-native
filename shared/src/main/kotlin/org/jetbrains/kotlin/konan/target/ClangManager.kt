@@ -16,9 +16,9 @@
 
 package org.jetbrains.kotlin.konan.target
 
-class ClangManager(hostProperties: Configurables, val targetProperties: Configurables) {
-    val hostArgs = ClangHostArgs(hostProperties)
-    val targetArgs = ClangTargetArgs(targetProperties) 
+class ClangManager(hostConfigurables: Configurables, val targetConfigurables: Configurables) {
+    val hostArgs = ClangHostArgs(hostConfigurables)
+    val targetArgs = ClangTargetArgs(targetConfigurables)
 
     val targetClangArgs = 
         (hostArgs.commonClangArgs + targetArgs.specificClangArgs).toTypedArray()
@@ -31,8 +31,8 @@ class ClangManager(hostProperties: Configurables, val targetProperties: Configur
         // (in particular) uses different default header search path.
         // See e.g. http://lists.llvm.org/pipermail/cfe-dev/2013-November/033680.html
         // We workaround the problem with -isystem flag below.
-        val llvmVersion = targetProperties.llvmVersion
-        val llvmHome = targetProperties.absoluteLlvmHome
+        val llvmVersion = targetConfigurables.llvmVersion
+        val llvmHome = targetConfigurables.absoluteLlvmHome
         val isystemArgs = listOf("-isystem", "$llvmHome/lib/clang/$llvmVersion/include")
 
         return isystemArgs + targetClangArgs.toList()
@@ -41,10 +41,10 @@ class ClangManager(hostProperties: Configurables, val targetProperties: Configur
     val hostCompilerArgsForJni = hostArgs.hostCompilerArgsForJni.toTypedArray()
 
     val targetClangCmd
-        = listOf("${targetProperties.absoluteLlvmHome}/bin/clang") + targetClangArgs
+        = listOf("${targetConfigurables.absoluteLlvmHome}/bin/clang") + targetClangArgs
 
     val targetClangXXCmd
-        = listOf("${targetProperties.absoluteLlvmHome}/bin/clang++") + targetClangArgs
+        = listOf("${targetConfigurables.absoluteLlvmHome}/bin/clang++") + targetClangArgs
 
     fun clangC(vararg userArgs: String) = targetClangCmd + userArgs.asList()
 

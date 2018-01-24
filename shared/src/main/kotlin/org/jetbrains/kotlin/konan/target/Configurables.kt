@@ -38,7 +38,7 @@ interface Configurables : TargetableExternalStorage {
     val llvmDebugOptFlags get() = targetList("llvmDebugOptFlags")
     val targetSysRoot get() = targetString("targetSysRoot")
     val libffiDir get() = targetString("libffiDir")
-    // TODO: This one should belong to LinuxPropertyValues,
+    // TODO: This one should belong to LinuxConfigurables,
     // but as of now that would break the dependency downloader.
     val gccToolchain get() = hostString("gccToolchain")
 
@@ -52,17 +52,17 @@ interface Configurables : TargetableExternalStorage {
     val absoluteLibffiDir get() = absolute(libffiDir)
 }
 
-interface NonApplePropertyValues: Configurables {
+interface NonAppleConfigurables : Configurables {
     val targetArg get() = targetString("quadruple")
 }
 
-interface ApplePropertyValues: Configurables {
+interface AppleConfigurables : Configurables {
     val arch get() = targetString("arch")!!
     val osVersionMin get() = targetString("osVersionMin")!!
     val osVersionMinFlagLd get() = targetString("osVersionMinFlagLd")!!
 }
 
-interface MingwPropertyValues: NonApplePropertyValues {
+interface MingwConfigurables : NonAppleConfigurables {
     val mingwWithLlvm: String?
         get() { 
             // TODO: make it a property in the konan.properties.
@@ -71,52 +71,17 @@ interface MingwPropertyValues: NonApplePropertyValues {
         }
 }
 
-interface LinuxPropertyValues: NonApplePropertyValues {
+interface LinuxConfigurables : NonAppleConfigurables {
     val libGcc get() = targetString("libGcc")!!
     val dynamicLinker get() = targetString("dynamicLinker")!!
     val pluginOptimizationFlags get() = targetList("pluginOptimizationFlags")
     val abiSpecificLibraries get() = targetList("abiSpecificLibraries")
 }
 
-interface LinuxMIPSPropertyValues: LinuxPropertyValues
-interface RaspberryPiPropertyValues: LinuxPropertyValues
-interface AndroidPropertyValues: LinuxPropertyValues
+interface LinuxMIPSConfigurables : LinuxConfigurables
+interface RaspberryPiConfigurables : LinuxConfigurables
+interface AndroidConfigurables : LinuxConfigurables
 
-interface WasmPropertyValues: NonApplePropertyValues {
+interface WasmConfigurables : NonAppleConfigurables {
     val s2wasmFlags get() = targetList("s2wasmFlags")
 }
-
-class LinuxProperties(target: KonanTarget, properties: Properties, baseDir: String?)
-    : LinuxPropertyValues, KonanPropertiesLoader(target, properties, baseDir)
-
-class LinuxMIPSProperties(target: KonanTarget, properties: Properties, baseDir: String?)
-    : LinuxMIPSPropertyValues , KonanPropertiesLoader(target, properties, baseDir)
-
-class AndroidProperties(target: KonanTarget, properties: Properties, baseDir: String?)
-    : AndroidPropertyValues , KonanPropertiesLoader(target, properties, baseDir)
-
-class AppleProperties(target: KonanTarget, properties: Properties, baseDir: String?)
-    : ApplePropertyValues,  KonanPropertiesLoader(target, properties, baseDir)
-
-class MingwProperties(target: KonanTarget, properties: Properties, baseDir: String?)
-    : MingwPropertyValues, KonanPropertiesLoader(target, properties, baseDir)
-
-class WasmProperties(target: KonanTarget, properties: Properties, baseDir: String?)
-    : WasmPropertyValues, KonanPropertiesLoader(target, properties, baseDir)
-
-
-internal fun konanProperties(target: KonanTarget, properties: Properties, baseDir: String?) = when (target)  {
-        KonanTarget.LINUX, KonanTarget.RASPBERRYPI ->
-            LinuxProperties(target, properties, baseDir)
-        KonanTarget.LINUX_MIPS32, KonanTarget.LINUX_MIPSEL32 ->
-            LinuxMIPSProperties(target, properties, baseDir)
-        KonanTarget.MACBOOK, KonanTarget.IPHONE, KonanTarget.IPHONE_SIM ->
-            AppleProperties(target, properties, baseDir)
-        KonanTarget.ANDROID_ARM32, KonanTarget.ANDROID_ARM64 ->
-            AndroidProperties(target, properties, baseDir)
-        KonanTarget.MINGW ->
-            MingwProperties(target, properties, baseDir)
-        KonanTarget.WASM32 ->
-            WasmProperties(target, properties, baseDir)
-    }
-

@@ -24,7 +24,7 @@ import org.jetbrains.kotlin.descriptors.ModuleDescriptor
 import org.jetbrains.kotlin.konan.file.File
 import org.jetbrains.kotlin.konan.target.CompilerOutputKind
 import org.jetbrains.kotlin.konan.target.KonanTarget
-import org.jetbrains.kotlin.konan.target.ApplePropertyValues
+import org.jetbrains.kotlin.konan.target.AppleConfigurables
 import org.jetbrains.kotlin.name.FqName
 import org.jetbrains.kotlin.name.Name
 import org.jetbrains.kotlin.name.isSubpackageOf
@@ -103,7 +103,7 @@ internal class ObjCExport(val context: Context) {
             KonanTarget.MACBOOK -> "MacOSX"
             else -> error(target)
         }
-        val properties = context.config.platform.targetProperties as ApplePropertyValues
+        val properties = context.config.platform.targetConfigurables as AppleConfigurables
         val minimumOsVersion = properties.osVersionMin!!
 
         val contents = StringBuilder()

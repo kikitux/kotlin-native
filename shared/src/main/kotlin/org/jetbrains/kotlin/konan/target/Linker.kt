@@ -60,8 +60,8 @@ abstract class LinkerFlags(val properties: Configurables)
     }
 }
 
-open class AndroidLinker(targetProperties: AndroidPropertyValues)
-    : LinkerFlags(targetProperties), AndroidPropertyValues by targetProperties  {
+open class AndroidLinker(targetProperties: AndroidConfigurables)
+    : LinkerFlags(targetProperties), AndroidConfigurables by targetProperties  {
 
     private val prefix = "$absoluteTargetToolchain/bin/"
     private val clang = "$prefix/clang"
@@ -88,8 +88,8 @@ open class AndroidLinker(targetProperties: AndroidPropertyValues)
     }
 }
 
-open class MacOSBasedLinker(targetProperties: ApplePropertyValues)
-    : LinkerFlags(targetProperties), ApplePropertyValues by targetProperties {
+open class MacOSBasedLinker(targetProperties: AppleConfigurables)
+    : LinkerFlags(targetProperties), AppleConfigurables by targetProperties {
 
     private val linker = "$absoluteTargetToolchain/usr/bin/ld"
     internal val dsymutil = "$llvmBin/llvm-dsymutil"
@@ -163,8 +163,8 @@ open class MacOSBasedLinker(targetProperties: ApplePropertyValues)
             listOf(dsymutil, "-dump-debug-map" ,executable)
 }
 
-open class LinuxBasedLinker(targetProperties: LinuxPropertyValues)
-    : LinkerFlags(targetProperties), LinuxPropertyValues by targetProperties {
+open class LinuxBasedLinker(targetProperties: LinuxConfigurables)
+    : LinkerFlags(targetProperties), LinuxConfigurables by targetProperties {
 
     override val libGcc: String = "$absoluteTargetSysRoot/${super.libGcc}"
     private val linker = "$absoluteTargetToolchain/bin/ld.gold"
@@ -175,7 +175,7 @@ open class LinuxBasedLinker(targetProperties: LinuxPropertyValues)
         = binaries.filter { it.isUnixStaticLib }
 
     override fun linkCommand(objectFiles: List<ObjectFile>, executable: ExecutableFile, optimize: Boolean, debug: Boolean, dynamic: Boolean): Command {
-        val isMips = (properties is LinuxMIPSPropertyValues)
+        val isMips = (properties is LinuxMIPSConfigurables)
 
         // TODO: Can we extract more to the konan.properties?
         return Command(linker).apply {
@@ -221,8 +221,8 @@ open class LinuxBasedLinker(targetProperties: LinuxPropertyValues)
     }
 }
 
-open class MingwLinker(targetProperties: MingwPropertyValues)
-    : LinkerFlags(targetProperties), MingwPropertyValues by targetProperties {
+open class MingwLinker(targetProperties: MingwConfigurables)
+    : LinkerFlags(targetProperties), MingwConfigurables by targetProperties {
 
     private val linker = "$absoluteTargetToolchain/bin/clang++"
 
@@ -244,8 +244,8 @@ open class MingwLinker(targetProperties: MingwPropertyValues)
     override fun linkCommandSuffix() = linkerKonanFlags
 }
 
-open class WasmLinker(targetProperties: WasmPropertyValues)
-    : LinkerFlags(targetProperties), WasmPropertyValues by targetProperties {
+open class WasmLinker(targetProperties: WasmConfigurables)
+    : LinkerFlags(targetProperties), WasmConfigurables by targetProperties {
 
     private val clang = "clang"
 
@@ -289,16 +289,16 @@ open class WasmLinker(targetProperties: WasmPropertyValues)
 fun linker(properties: Configurables): LinkerFlags  =
     when (properties.target) {
         KonanTarget.LINUX, KonanTarget.RASPBERRYPI ->
-            LinuxBasedLinker(properties as LinuxPropertyValues)
+            LinuxBasedLinker(properties as LinuxConfigurables)
         KonanTarget.LINUX_MIPS32, KonanTarget.LINUX_MIPSEL32 ->
-            LinuxBasedLinker(properties as LinuxMIPSPropertyValues)
+            LinuxBasedLinker(properties as LinuxMIPSConfigurables)
         KonanTarget.MACBOOK, KonanTarget.IPHONE, KonanTarget.IPHONE_SIM ->
-            MacOSBasedLinker(properties as ApplePropertyValues)
+            MacOSBasedLinker(properties as AppleConfigurables)
         KonanTarget.ANDROID_ARM32, KonanTarget.ANDROID_ARM64 ->
-            AndroidLinker(properties as AndroidPropertyValues)
+            AndroidLinker(properties as AndroidConfigurables)
         KonanTarget.MINGW ->
-            MingwLinker(properties as MingwPropertyValues)
+            MingwLinker(properties as MingwConfigurables)
         KonanTarget.WASM32 ->
-            WasmLinker(properties as WasmPropertyValues)
+            WasmLinker(properties as WasmConfigurables)
     }
 

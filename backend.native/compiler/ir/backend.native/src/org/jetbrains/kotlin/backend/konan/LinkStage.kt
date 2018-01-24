@@ -19,7 +19,6 @@ package org.jetbrains.kotlin.backend.konan
 import org.jetbrains.kotlin.konan.KonanExternalToolFailure
 import org.jetbrains.kotlin.konan.exec.Command
 import org.jetbrains.kotlin.konan.file.*
-import org.jetbrains.kotlin.konan.properties.*
 import org.jetbrains.kotlin.konan.target.*
 
 typealias BitcodeFile = String
@@ -93,7 +92,7 @@ internal class LinkStage(val context: Context) {
         val combinedS = temporary("combined", ".s")
         targetTool("llc", combinedBc, "-o", combinedS)
 
-        val s2wasmFlags = (linker as WasmPropertyValues).s2wasmFlags.toTypedArray()
+        val s2wasmFlags = (linker as WasmConfigurables).s2wasmFlags.toTypedArray()
         val combinedWast = temporary( "combined", ".wast")
         targetTool("s2wasm", combinedS, "-o", combinedWast, *s2wasmFlags)
 
