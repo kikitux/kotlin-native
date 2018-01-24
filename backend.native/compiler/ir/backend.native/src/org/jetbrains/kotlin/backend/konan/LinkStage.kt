@@ -30,7 +30,7 @@ internal class LinkStage(val context: Context) {
     private val config = context.config.configuration
     private val target = context.config.targetManager.target
     private val platform = context.config.platform
-    private val linker = context.config.platform.linker
+    private val linker = platform.linker
 
     private val optimize = config.get(KonanConfigKeys.OPTIMIZATION) ?: false
     private val debug = config.get(KonanConfigKeys.DEBUG) ?: false

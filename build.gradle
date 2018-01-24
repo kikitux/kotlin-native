@@ -104,7 +104,7 @@ void setupClang(Project project) {
 
                         eachPlatform { // TODO: will not work when cross-compiling
                             [cCompiler, cppCompiler, linker].each {
-                                it.withArguments { it.addAll(project.hostPlatform.clangArgs) }
+                                it.withArguments { it.addAll(project.hostPlatform.clang.clangArgs) }
                             }
 
                         }
