@@ -16,9 +16,7 @@
 
 package org.jetbrains.kotlin.konan.target
 
-import org.jetbrains.kotlin.konan.properties.*
-
-class ClangManager(hostProperties: KonanPropertyValues, val targetProperties: KonanPropertyValues) {
+class ClangManager(hostProperties: Configurables, val targetProperties: Configurables) {
     val hostArgs = ClangHostArgs(hostProperties)
     val targetArgs = ClangTargetArgs(targetProperties) 
 

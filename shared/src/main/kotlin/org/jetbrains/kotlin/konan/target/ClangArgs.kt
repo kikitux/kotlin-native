@@ -16,10 +16,9 @@
 
 package org.jetbrains.kotlin.konan.target
 
-import org.jetbrains.kotlin.konan.properties.*
 import org.jetbrains.kotlin.konan.file.File
 
-class ClangTargetArgs(konanProperties: KonanPropertyValues) {
+class ClangTargetArgs(konanProperties: Configurables) {
 
     val target = konanProperties.target
     val sysRoot = konanProperties.absoluteTargetSysRoot
@@ -124,7 +123,7 @@ class ClangTargetArgs(konanProperties: KonanPropertyValues) {
     }
 }
 
-class ClangHostArgs(val hostProperties: KonanPropertyValues) {
+class ClangHostArgs(val hostProperties: Configurables) {
 
     val targetToolchain get() = hostProperties.absoluteTargetToolchain
     val sysRoot get() = hostProperties.absoluteTargetSysRoot

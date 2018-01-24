@@ -46,6 +46,4 @@ class Distribution(val target: KonanTarget,
     val runtime = runtimeFileOverride ?: "$stdlib/targets/${targetName}/native/runtime.bc"
 
     val dependenciesDir = DependencyProcessor.defaultDependenciesRoot.absolutePath
-
-    //val targetProperties: KonanPropertyValues = konanProperties(target, properties, dependenciesDir)
 }

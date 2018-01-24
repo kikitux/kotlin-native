@@ -18,11 +18,8 @@ package org.jetbrains.kotlin.konan.target
 
 import java.lang.ProcessBuilder
 import java.lang.ProcessBuilder.Redirect
-import org.jetbrains.kotlin.konan.KonanExternalToolFailure
 import org.jetbrains.kotlin.konan.exec.Command
 import org.jetbrains.kotlin.konan.file.*
-import org.jetbrains.kotlin.konan.properties.*
-import org.jetbrains.kotlin.konan.target.*
 
 typealias BitcodeFile = String
 typealias ObjectFile = String
@@ -30,8 +27,8 @@ typealias ExecutableFile = String
 
 // Use "clang -v -save-temps" to write linkCommand() method 
 // for another implementation of this class.
-abstract class LinkerFlags(val properties: KonanPropertyValues) 
-   /* : KonanPropertyValues by properties */{
+abstract class LinkerFlags(val properties: Configurables)
+   /* : Configurables by properties */{
 
     val llvmBin = "${properties.absoluteLlvmHome}/bin"
     val llvmLib = "${properties.absoluteLlvmHome}/lib"
@@ -289,7 +286,7 @@ open class WasmLinker(targetProperties: WasmPropertyValues)
     }
 }
 
-fun linker(properties: KonanPropertyValues): LinkerFlags  =
+fun linker(properties: Configurables): LinkerFlags  =
     when (properties.target) {
         KonanTarget.LINUX, KonanTarget.RASPBERRYPI ->
             LinuxBasedLinker(properties as LinuxPropertyValues)

@@ -18,8 +18,8 @@ package org.jetbrains.kotlin.konan.target
 
 import org.jetbrains.kotlin.konan.properties.*
 
-class Platform(hostProperties: KonanPropertyValues, 
-    val targetProperties: KonanPropertyValues) : KonanPropertyValues by targetProperties {
+class Platform(hostProperties: Configurables,
+               val targetProperties: Configurables) : Configurables by targetProperties {
 
     val clang by lazy {
         // TODO: hostProperties should not be passed here.
